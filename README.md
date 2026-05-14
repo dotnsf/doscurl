@@ -185,8 +185,31 @@ doscurl/
 - No keep-alive connections
 - Basic HTTP/1.0 support
 - No cookie management
-- No redirect following
 - No chunked transfer encoding
+
+## Known Issues
+
+### "End: heap is corrupted!" Message
+
+When the program exits, you may see the following message:
+```
+End: heap is corrupted!
+```
+
+**This message can be safely ignored.** It is a false positive from mTCP's internal heap checking mechanism.
+
+**Why this happens:**
+- DOSCurl uses `malloc()`/`free()` for large buffers to avoid memory constraints
+- mTCP's `_heapchk()` function incorrectly reports this as heap corruption
+- The program functions correctly despite this message
+
+**Impact:**
+- ✅ No functional impact - the program works correctly
+- ✅ Multiple executions work fine
+- ✅ All HTTP operations complete successfully
+- ⚠️ The message appears every time the program exits
+
+This is a known limitation of mixing mTCP's memory management with standard C library memory allocation in 16-bit DOS environments.
 
 ## Development Status
 

@@ -14,6 +14,8 @@ A lightweight HTTP client for 16-bit PC-DOS environments, inspired by curl.
 - URL parsing
 - Custom headers support
 - Basic authentication support
+- **HTTP redirect following (301, 302, 303, 307, 308)**
+- **Detailed error handling with HTTP status codes**
 - Verbose output mode
 - File output support
 - Configurable timeouts (connection and total operation)
@@ -104,6 +106,12 @@ doscurl -u "username:password" http://example.com/protected
 doscurl --connect-timeout 5 -m 60 http://example.com/
 ```
 
+### Follow redirects (enabled by default)
+```
+doscurl -L http://example.com/redirect
+doscurl --max-redirs 5 http://example.com/
+```
+
 ### Combined options
 ```
 doscurl -v -X POST -d "data=test" -o result.txt http://example.com/api
@@ -119,6 +127,8 @@ doscurl -v -X POST -d "data=test" -o result.txt http://example.com/api
 | `-u USER:PASS`, `--user USER:PASS` | Basic authentication credentials |
 | `-v`, `--verbose` | Verbose output (shows connection details) |
 | `-o FILE`, `--output FILE` | Write output to file instead of stdout |
+| `-L`, `--location` | Follow HTTP redirects (enabled by default) |
+| `--max-redirs NUM` | Maximum number of redirects to follow (default: 10) |
 | `-m SECONDS`, `--max-time SECONDS` | Maximum time for the entire operation (default: 30) |
 | `--connect-timeout SECONDS` | Maximum time for connection (default: 10) |
 | `--version` | Show version number |
@@ -180,7 +190,7 @@ doscurl/
 
 ## Development Status
 
-Current status: **Phase 5 Complete** - Timeout customization implemented
+Current status: **Phase 6 Complete** - HTTP redirects and error handling implemented
 
 ### Completed Phases
 - ✅ Phase 1: Project structure and build system
@@ -188,11 +198,12 @@ Current status: **Phase 5 Complete** - Timeout customization implemented
 - ✅ Phase 3: DOSBox-X testing and verification
 - ✅ Phase 4: HTTP POST request implementation
 - ✅ Phase 5: Timeout customization
+- ✅ Phase 6: HTTP redirects and detailed error handling
 
-### Upcoming Features (Phase 6)
-- HTTP redirects (301, 302)
+### Future Enhancements
 - Chunked transfer encoding
-- Enhanced error handling
+- HTTP proxy support
+- Progress indicators for large transfers
 
 ## License
 

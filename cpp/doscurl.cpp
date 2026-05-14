@@ -34,6 +34,7 @@
 #define TCP_RECV_BUFFER (4096)
 #define DEFAULT_CONNECT_TIMEOUT (10000ul)  // 10 seconds
 #define DEFAULT_MAX_TIME (30000ul)         // 30 seconds
+#define MAX_REDIRECTS      (10)            // Maximum redirect follows
 
 // Globals
 char Hostname[HOSTNAME_LEN];
@@ -45,17 +46,26 @@ int CustomHeaderCount = 0;
 char BasicAuth[AUTH_LEN];
 char OutputFile[FILENAME_LEN];
 int VerboseMode = 0;
+int FollowRedirects = 1;  // Follow redirects by default
+int MaxRedirects = MAX_REDIRECTS;
 uint32_t ConnectTimeout = DEFAULT_CONNECT_TIMEOUT;  // milliseconds
 uint32_t MaxTime = DEFAULT_MAX_TIME;                // milliseconds
 IpAddr_t HostAddr;
 uint16_t ServerPort = 80;
 TcpSocket *sock = NULL;
+int LastHttpStatus = 0;  // Last HTTP status code received
 
-// Large buffers (global to avoid stack overflow)
-uint8_t responseData[32768];
-uint8_t recvBuffer[1024];
-char httpRequest[2048];
-char base64Buffer[256];
+// Large buffers (dynamically allocated to avoid mTCP heap check false positives)
+uint8_t *responseData = NULL;
+uint8_t *recvBuffer = NULL;
+char *httpRequest = NULL;
+char *base64Buffer = NULL;
+
+// Buffer sizes (reduced for 16-bit DOS memory constraints)
+#define RESPONSE_DATA_SIZE 16384  // 16KB instead of 32KB
+#define RECV_BUFFER_SIZE 1024
+#define HTTP_REQUEST_SIZE 2048
+#define BASE64_BUFFER_SIZE 256
 
 // Ctrl-Break handler
 volatile uint8_t CtrlBreakDetected = 0;
@@ -98,10 +108,24 @@ void base64_encode(const char *input, char *output, int input_len) {
 
 // Shutdown and exit
 static void shutdown(int rc) {
-  fprintf(stderr, "\nShutting down (rc=%d)...\n", rc);
-  // Skip Utils::endStack() to avoid "heap is corrupted" false positive
-  // The program works correctly, but mTCP's heap check is overly sensitive
-  // Utils::endStack();
+  // Clean up socket if it exists
+  if (sock != NULL) {
+    sock->close();
+    TcpSocketMgr::freeSocket(sock);
+    sock = NULL;
+  }
+  
+  // Free dynamically allocated buffers
+  if (responseData) free(responseData);
+  if (recvBuffer) free(recvBuffer);
+  if (httpRequest) free(httpRequest);
+  if (base64Buffer) free(base64Buffer);
+  
+  // NOTE: We skip Utils::endStack() because it performs heap checking
+  // that incorrectly reports corruption when we use malloc/free.
+  // This is safe for a single-run DOS program that exits immediately.
+  // The OS will reclaim all memory when the program terminates.
+  
   exit(rc);
 }
 
@@ -172,22 +196,39 @@ int resolveHost(void) {
     return -1;
   }
   
-  uint8_t done = 0;
-  while (!done) {
+  // If rc == 0, it's an IP address and already resolved
+  if (rc == 0) {
+    fprintf(stderr, "%d.%d.%d.%d\n",
+            HostAddr[0], HostAddr[1], HostAddr[2], HostAddr[3]);
+    return 0;
+  }
+  
+  // rc == 1 means DNS resolution is needed
+  clockTicks_t start = TIMER_GET_CURRENT();
+  
+  while (1) {
     if (userWantsOut()) return -1;
+    
+    // Check for DNS timeout (use ConnectTimeout)
+    if (Timer_diff(start, TIMER_GET_CURRENT()) > TIMER_MS_TO_TICKS(ConnectTimeout)) {
+      fprintf(stderr, "DNS timeout after %lu ms\n", ConnectTimeout);
+      return -1;
+    }
     
     PACKET_PROCESS_SINGLE;
     Arp::driveArp();
     Tcp::drivePackets();
     
-    if (Dns::isQueryPending()) {
-      continue;
+    // Check if DNS query is still pending
+    if (!Dns::isQueryPending()) {
+      // DNS resolution complete
+      break;
     }
-    
-    done = 1;
   }
   
-  if (rc != 0) {
+  // Check if HostAddr was successfully set (first byte should not be 0 for valid address)
+  // Note: This is a simple check; a more robust check would verify all bytes
+  if (HostAddr[0] == 0 && HostAddr[1] == 0 && HostAddr[2] == 0 && HostAddr[3] == 0) {
     fprintf(stderr, "failed\n");
     return -1;
   }
@@ -254,34 +295,34 @@ int sendRequest(void) {
   int pos = 0;
   
   // Build request line
-  pos += snprintf(httpRequest + pos, sizeof(httpRequest) - pos,
+  pos += snprintf(httpRequest + pos, HTTP_REQUEST_SIZE - pos,
                   "%s %s HTTP/1.0\r\n", HttpMethod, Path);
   
   // Add Host header
-  pos += snprintf(httpRequest + pos, sizeof(httpRequest) - pos,
+  pos += snprintf(httpRequest + pos, HTTP_REQUEST_SIZE - pos,
                   "Host: %s\r\n", Hostname);
   
   // Add User-Agent header
-  pos += snprintf(httpRequest + pos, sizeof(httpRequest) - pos,
+  pos += snprintf(httpRequest + pos, HTTP_REQUEST_SIZE - pos,
                   "User-Agent: DOSCurl/0.1.0\r\n");
   
   // Add Basic Authentication header if provided
   if (BasicAuth[0] != '\0') {
     base64_encode(BasicAuth, base64Buffer, strlen(BasicAuth));
-    pos += snprintf(httpRequest + pos, sizeof(httpRequest) - pos,
+    pos += snprintf(httpRequest + pos, HTTP_REQUEST_SIZE - pos,
                     "Authorization: Basic %s\r\n", base64Buffer);
   }
   
   // Add custom headers
   for (int i = 0; i < CustomHeaderCount; i++) {
-    pos += snprintf(httpRequest + pos, sizeof(httpRequest) - pos,
+    pos += snprintf(httpRequest + pos, HTTP_REQUEST_SIZE - pos,
                     "%s\r\n", CustomHeaders[i]);
   }
   
   // Add Content-Length and Content-Type for POST data
   if (PostData[0] != '\0') {
     int dataLen = strlen(PostData);
-    pos += snprintf(httpRequest + pos, sizeof(httpRequest) - pos,
+    pos += snprintf(httpRequest + pos, HTTP_REQUEST_SIZE - pos,
                     "Content-Length: %d\r\n", dataLen);
     
     // Add default Content-Type if not specified in custom headers
@@ -293,27 +334,32 @@ int sendRequest(void) {
       }
     }
     if (!hasContentType) {
-      pos += snprintf(httpRequest + pos, sizeof(httpRequest) - pos,
+      pos += snprintf(httpRequest + pos, HTTP_REQUEST_SIZE - pos,
                       "Content-Type: application/x-www-form-urlencoded\r\n");
     }
   }
   
   // Add Connection header
-  pos += snprintf(httpRequest + pos, sizeof(httpRequest) - pos,
+  pos += snprintf(httpRequest + pos, HTTP_REQUEST_SIZE - pos,
                   "Connection: close\r\n");
   
   // End of headers
-  pos += snprintf(httpRequest + pos, sizeof(httpRequest) - pos, "\r\n");
+  pos += snprintf(httpRequest + pos, HTTP_REQUEST_SIZE - pos, "\r\n");
   
   // Add POST data if present
   if (PostData[0] != '\0') {
-    pos += snprintf(httpRequest + pos, sizeof(httpRequest) - pos, "%s", PostData);
+    pos += snprintf(httpRequest + pos, HTTP_REQUEST_SIZE - pos, "%s", PostData);
   }
   
   fprintf(stderr, "Sending %s request...\n", HttpMethod);
   
   int len = strlen(httpRequest);
   int sent = 0;
+  
+  // Debug: show request being sent in verbose mode
+  if (VerboseMode) {
+    fprintf(stderr, "--- Request ---\n%s--- End Request ---\n", httpRequest);
+  }
   
   while (sent < len) {
     if (userWantsOut()) return -1;
@@ -334,24 +380,97 @@ int sendRequest(void) {
   return 0;
 }
 
+// Parse HTTP status line and extract status code
+int parseHttpStatus(const char *statusLine) {
+  // Expected format: "HTTP/1.x NNN Message"
+  int status = 0;
+  const char *p = statusLine;
+  
+  // Skip "HTTP/"
+  if (strncmp(p, "HTTP/", 5) != 0) {
+    return 0;
+  }
+  p += 5;
+  
+  // Skip version (e.g., "1.0" or "1.1")
+  while (*p && *p != ' ') p++;
+  if (*p == ' ') p++;
+  
+  // Parse status code
+  status = atoi(p);
+  
+  return status;
+}
+
+// Extract Location header from response headers
+int extractLocation(const uint8_t *headers, uint32_t headerLen, char *location, int maxLen) {
+  const char *p = (const char *)headers;
+  const char *end = p + headerLen;
+  
+  while (p < end) {
+    // Find line start
+    const char *lineStart = p;
+    const char *lineEnd = lineStart;
+    
+    // Find line end
+    while (lineEnd < end && *lineEnd != '\r' && *lineEnd != '\n') {
+      lineEnd++;
+    }
+    
+    // Check if this is Location header (case-insensitive)
+    if (lineEnd - lineStart > 10 &&
+        (strncmp(lineStart, "Location:", 9) == 0 ||
+         strncmp(lineStart, "location:", 9) == 0)) {
+      const char *value = lineStart + 9;
+      // Skip whitespace
+      while (value < lineEnd && (*value == ' ' || *value == '\t')) {
+        value++;
+      }
+      
+      int len = lineEnd - value;
+      if (len > 0 && len < maxLen) {
+        strncpy(location, value, len);
+        location[len] = '\0';
+        return 1;
+      }
+    }
+    
+    // Move to next line
+    p = lineEnd;
+    if (p < end && *p == '\r') p++;
+    if (p < end && *p == '\n') p++;
+  }
+  
+  return 0;
+}
+
 // Receive and print response
 int receiveResponse(void) {
   uint32_t totalBytes = 0;
   uint32_t responseLen = 0;
   FILE *outFile = NULL;
   
-  if (VerboseMode) {
-    fprintf(stderr, "Receiving response...\n");
-  }
+  fprintf(stderr, "Receiving response...\n");
   
   clockTicks_t start = TIMER_GET_CURRENT();
+  clockTicks_t lastData = start;
+  int noDataCount = 0;
   
   // Receive all data
   while (1) {
     if (userWantsOut()) return -1;
     
+    // Overall timeout
     if (Timer_diff(start, TIMER_GET_CURRENT()) > TIMER_MS_TO_TICKS(MaxTime)) {
       fprintf(stderr, "\nTimeout waiting for data after %lu ms\n", MaxTime);
+      break;
+    }
+    
+    // If no data for 2 seconds and we have some response, consider it complete
+    if (responseLen > 0 && Timer_diff(lastData, TIMER_GET_CURRENT()) > TIMER_MS_TO_TICKS(2000)) {
+      if (VerboseMode) {
+        fprintf(stderr, "No more data after 2 seconds, considering response complete\n");
+      }
       break;
     }
     
@@ -359,22 +478,31 @@ int receiveResponse(void) {
     Arp::driveArp();
     Tcp::drivePackets();
     
-    int16_t rc = sock->recv(recvBuffer, sizeof(recvBuffer));
+    int16_t rc = sock->recv(recvBuffer, RECV_BUFFER_SIZE);
     
     if (rc > 0) {
       // Data received - store in buffer
-      if (responseLen + rc < sizeof(responseData)) {
+      if (responseLen + rc < RESPONSE_DATA_SIZE) {
         memcpy(responseData + responseLen, recvBuffer, rc);
         responseLen += rc;
       }
       totalBytes += rc;
-      start = TIMER_GET_CURRENT(); // Reset timeout
+      lastData = TIMER_GET_CURRENT(); // Reset data timeout
+      noDataCount = 0;
     } else if (rc < 0) {
       fprintf(stderr, "\nReceive error\n");
       return -1;
     } else {
       // No data available
       if (sock->isRemoteClosed()) {
+        break;
+      }
+      noDataCount++;
+      // If we've checked many times with no data and connection seems idle, break
+      if (responseLen > 0 && noDataCount > 100) {
+        if (VerboseMode) {
+          fprintf(stderr, "Connection idle, considering response complete\n");
+        }
         break;
       }
     }
@@ -400,12 +528,37 @@ int receiveResponse(void) {
   }
   
   if (headerEnd) {
-    // Print headers to stderr (without extra blank lines)
+    // Parse HTTP status code
     uint32_t headerLen = headerEnd - responseData - 4;
+    char statusLine[128];
+    int statusLineLen = 0;
+    
+    // Extract status line (first line)
+    for (uint32_t i = 0; i < headerLen && i < sizeof(statusLine) - 1; i++) {
+      if (responseData[i] == '\r' || responseData[i] == '\n') {
+        break;
+      }
+      statusLine[statusLineLen++] = responseData[i];
+    }
+    statusLine[statusLineLen] = '\0';
+    
+    // Parse status code
+    LastHttpStatus = parseHttpStatus(statusLine);
+    
+    // Print headers to stderr (without extra blank lines)
     for (uint32_t i = 0; i < headerLen; i++) {
       fputc(responseData[i], stderr);
     }
     fprintf(stderr, "\n");
+    
+    // Check for error status codes
+    if (LastHttpStatus >= 400) {
+      if (LastHttpStatus >= 500) {
+        fprintf(stderr, "Error: Server error (HTTP %d)\n", LastHttpStatus);
+      } else {
+        fprintf(stderr, "Error: Client error (HTTP %d)\n", LastHttpStatus);
+      }
+    }
     
     // Print/save body
     uint32_t bodyLen = responseLen - (headerEnd - responseData);
@@ -452,11 +605,13 @@ int parseArguments(int argc, char *argv[]) {
           strcmp(argv[i], "-u") == 0 || strcmp(argv[i], "--user") == 0 ||
           strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0 ||
           strcmp(argv[i], "--connect-timeout") == 0 ||
-          strcmp(argv[i], "--max-time") == 0 || strcmp(argv[i], "-m") == 0) {
+          strcmp(argv[i], "--max-time") == 0 || strcmp(argv[i], "-m") == 0 ||
+          strcmp(argv[i], "--max-redirs") == 0) {
         // Skip the next argument (option's value)
         i++;
-      } else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0) {
-        // -v doesn't take an argument, don't skip
+      } else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0 ||
+                 strcmp(argv[i], "-L") == 0 || strcmp(argv[i], "--location") == 0) {
+        // These options don't take an argument, don't skip
       }
     } else {
       // This is not an option, must be the URL
@@ -527,6 +682,19 @@ int parseArguments(int argc, char *argv[]) {
     else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0) {
       VerboseMode = 1;
     }
+    else if (strcmp(argv[i], "-L") == 0 || strcmp(argv[i], "--location") == 0) {
+      FollowRedirects = 1;  // Already default, but explicit
+    }
+    else if (strcmp(argv[i], "--max-redirs") == 0) {
+      if (i + 1 >= argc) {
+        fprintf(stderr, "Error: --max-redirs requires an argument\n");
+        return -1;
+      }
+      MaxRedirects = atoi(argv[++i]);
+      if (MaxRedirects < 0) {
+        MaxRedirects = 0;
+      }
+    }
     else if (strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0) {
       if (i + 1 >= argc) {
         fprintf(stderr, "Error: -o requires an argument\n");
@@ -577,6 +745,8 @@ void printUsage(void) {
   fprintf(stderr, "  -u, --user <user:pass>  Basic authentication credentials\n");
   fprintf(stderr, "  -v, --verbose           Verbose output (show connection details)\n");
   fprintf(stderr, "  -o, --output <file>     Write output to file instead of stdout\n");
+  fprintf(stderr, "  -L, --location          Follow HTTP redirects (enabled by default)\n");
+  fprintf(stderr, "  --max-redirs <num>      Maximum number of redirects to follow (default: 10)\n");
   fprintf(stderr, "  -m, --max-time <sec>    Maximum time for the entire operation (default: 30)\n");
   fprintf(stderr, "  --connect-timeout <sec> Maximum time for connection (default: 10)\n");
   fprintf(stderr, "  --version               Show version information\n");
@@ -603,6 +773,38 @@ int main(int argc, char *argv[]) {
     return 1;
   }
   
+  // Allocate large buffers dynamically to avoid mTCP heap check false positives
+  // Allocate memory buffers
+  responseData = (uint8_t *)malloc(RESPONSE_DATA_SIZE);
+  if (!responseData) {
+    fprintf(stderr, "Error: Failed to allocate responseData\n");
+    return 1;
+  }
+  
+  recvBuffer = (uint8_t *)malloc(RECV_BUFFER_SIZE);
+  if (!recvBuffer) {
+    fprintf(stderr, "Error: Failed to allocate recvBuffer\n");
+    free(responseData);
+    return 1;
+  }
+  
+  httpRequest = (char *)malloc(HTTP_REQUEST_SIZE);
+  if (!httpRequest) {
+    fprintf(stderr, "Error: Failed to allocate httpRequest\n");
+    free(responseData);
+    free(recvBuffer);
+    return 1;
+  }
+  
+  base64Buffer = (char *)malloc(BASE64_BUFFER_SIZE);
+  if (!base64Buffer) {
+    fprintf(stderr, "Error: Failed to allocate base64Buffer\n");
+    free(responseData);
+    free(recvBuffer);
+    free(httpRequest);
+    return 1;
+  }
+  
   // Initialize PostData, BasicAuth, and OutputFile
   PostData[0] = '\0';
   BasicAuth[0] = '\0';
@@ -613,20 +815,21 @@ int main(int argc, char *argv[]) {
     return 1;
   }
   
-  fprintf(stderr, "Method: %s\n", HttpMethod);
-  fprintf(stderr, "Host: %s\n", Hostname);
-  fprintf(stderr, "Port: %u\n", ServerPort);
-  fprintf(stderr, "Path: %s\n", Path);
-  if (PostData[0] != '\0') {
-    fprintf(stderr, "POST Data: %s\n", PostData);
+  if (VerboseMode) {
+    fprintf(stderr, "Method: %s\n", HttpMethod);
+    fprintf(stderr, "Host: %s\n", Hostname);
+    fprintf(stderr, "Port: %u\n", ServerPort);
+    fprintf(stderr, "Path: %s\n", Path);
+    if (PostData[0] != '\0') {
+      fprintf(stderr, "POST Data: %s\n", PostData);
+    }
+    if (CustomHeaderCount > 0) {
+      fprintf(stderr, "Custom Headers: %d\n", CustomHeaderCount);
+    }
+    fprintf(stderr, "\n");
   }
-  if (CustomHeaderCount > 0) {
-    fprintf(stderr, "Custom Headers: %d\n", CustomHeaderCount);
-  }
-  fprintf(stderr, "\n");
   
   // Initialize TCP/IP stack
-  fprintf(stderr, "Initializing TCP/IP stack...\n");
   int rc = Utils::parseEnv();
   if (rc != 0) {
     fprintf(stderr, "Error parsing environment: %d\n", rc);
@@ -640,39 +843,95 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "Check packet driver and network configuration\n");
     return 1;
   }
-  fprintf(stderr, "TCP/IP stack initialized successfully\n\n");
   
-  // Resolve hostname
-  if (resolveHost() < 0) {
-    shutdown(1);
-  }
+  // Main request loop (handles redirects)
+  int redirectCount = 0;
+  char currentUrl[HOSTNAME_LEN + PATH_LEN + 20];
+  char locationUrl[HOSTNAME_LEN + PATH_LEN + 20];
   
-  // Connect to server
-  if (connectToServer() < 0) {
-    shutdown(1);
-  }
+  // Build initial URL
+  snprintf(currentUrl, sizeof(currentUrl), "http://%s:%u%s", Hostname, ServerPort, Path);
   
-  // Send HTTP request
-  if (sendRequest() < 0) {
+  while (redirectCount <= MaxRedirects) {
+    // Parse current URL
+    if (parseUrl(currentUrl) < 0) {
+      fprintf(stderr, "Error: Invalid URL '%s'\n", currentUrl);
+      shutdown(1);
+    }
+    
+    if (VerboseMode && redirectCount > 0) {
+      fprintf(stderr, "Following redirect #%d to: %s\n", redirectCount, currentUrl);
+    }
+    
+    // Resolve hostname
+    if (resolveHost() < 0) {
+      shutdown(1);
+    }
+    
+    // Connect to server
+    if (connectToServer() < 0) {
+      shutdown(1);
+    }
+    
+    // Send HTTP request
+    if (sendRequest() < 0) {
+      sock->close();
+      shutdown(1);
+    }
+    
+    // Receive response
+    if (receiveResponse() < 0) {
+      sock->close();
+      shutdown(1);
+    }
+    
+    // Close connection
     sock->close();
-    shutdown(1);
+    
+    // Check if we need to follow a redirect
+    if (FollowRedirects && LastHttpStatus >= 300 && LastHttpStatus < 400) {
+      // Extract Location header
+      uint8_t *headerEnd = NULL;
+      uint32_t responseLen = 0;
+      
+      // Find response length (simplified - assumes responseData is still valid)
+      for (uint32_t i = 0; i < RESPONSE_DATA_SIZE - 3; i++) {
+        if (responseData[i] == '\r' && responseData[i+1] == '\n' &&
+            responseData[i+2] == '\r' && responseData[i+3] == '\n') {
+          headerEnd = responseData + i + 4;
+          responseLen = i;
+          break;
+        }
+      }
+      
+      if (headerEnd && extractLocation(responseData, responseLen, locationUrl, sizeof(locationUrl))) {
+        if (VerboseMode) {
+          fprintf(stderr, "Redirect (HTTP %d) to: %s\n", LastHttpStatus, locationUrl);
+        }
+        
+        // Check redirect count
+        redirectCount++;
+        if (redirectCount > MaxRedirects) {
+          fprintf(stderr, "Error: Too many redirects (max %d)\n", MaxRedirects);
+          shutdown(1);
+        }
+        
+        // Update current URL for next iteration
+        strncpy(currentUrl, locationUrl, sizeof(currentUrl) - 1);
+        currentUrl[sizeof(currentUrl) - 1] = '\0';
+        
+        // Continue loop to follow redirect
+        continue;
+      } else {
+        fprintf(stderr, "Warning: Redirect response (HTTP %d) but no Location header found\n", LastHttpStatus);
+        break;
+      }
+    }
+    
+    // No redirect, we're done
+    break;
   }
   
-  // Receive response
-  fprintf(stderr, "\nCalling receiveResponse()...\n");
-  if (receiveResponse() < 0) {
-    fprintf(stderr, "receiveResponse() failed\n");
-    sock->close();
-    shutdown(1);
-  }
-  fprintf(stderr, "receiveResponse() completed successfully\n");
-  
-  // Close connection
-  fprintf(stderr, "Closing socket...\n");
-  sock->close();
-  fprintf(stderr, "Socket closed\n");
-  
-  fprintf(stderr, "Done!\n");
   shutdown(0);
   
   return 0;

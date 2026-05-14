@@ -106,7 +106,7 @@ doscurl -v -X POST -d "data=test" -o result.txt http://example.com/api
 | `-H HEADER` | Add custom header (can be used multiple times, max 10) |
 | `-v` | Verbose output (shows connection details) |
 | `-o FILE` | Write output to file instead of stdout |
-| `--help` | Show help message |
+| `--version` | Show version number |
 
 ## Testing in DOSBox-X
 

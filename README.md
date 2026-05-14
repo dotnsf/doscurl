@@ -13,8 +13,10 @@ A lightweight HTTP client for 16-bit PC-DOS environments, inspired by curl.
 - HTTP GET and POST requests
 - URL parsing
 - Custom headers support
+- Basic authentication support
 - Verbose output mode
 - File output support
+- Configurable timeouts (connection and total operation)
 - Works with packet drivers (NE2000, etc.)
 
 ## Requirements
@@ -92,6 +94,16 @@ doscurl -o output.txt http://example.com/data.json
 doscurl -H "Authorization: Bearer token123" http://api.example.com/
 ```
 
+### Basic authentication
+```
+doscurl -u "username:password" http://example.com/protected
+```
+
+### Custom timeouts
+```
+doscurl --connect-timeout 5 -m 60 http://example.com/
+```
+
 ### Combined options
 ```
 doscurl -v -X POST -d "data=test" -o result.txt http://example.com/api
@@ -101,11 +113,14 @@ doscurl -v -X POST -d "data=test" -o result.txt http://example.com/api
 
 | Option | Description |
 |--------|-------------|
-| `-X METHOD` | HTTP method (GET, POST, HEAD) |
-| `-d DATA` | POST data (automatically sets method to POST) |
-| `-H HEADER` | Add custom header (can be used multiple times, max 10) |
-| `-v` | Verbose output (shows connection details) |
-| `-o FILE` | Write output to file instead of stdout |
+| `-X METHOD`, `--request METHOD` | HTTP method (GET, POST, HEAD, etc.) |
+| `-d DATA`, `--data DATA` | POST data (automatically sets method to POST) |
+| `-H HEADER`, `--header HEADER` | Add custom header (can be used multiple times, max 10) |
+| `-u USER:PASS`, `--user USER:PASS` | Basic authentication credentials |
+| `-v`, `--verbose` | Verbose output (shows connection details) |
+| `-o FILE`, `--output FILE` | Write output to file instead of stdout |
+| `-m SECONDS`, `--max-time SECONDS` | Maximum time for the entire operation (default: 30) |
+| `--connect-timeout SECONDS` | Maximum time for connection (default: 10) |
 | `--version` | Show version number |
 
 ## Testing in DOSBox-X
@@ -156,17 +171,28 @@ doscurl/
 ## Limitations
 
 - HTTP only (no HTTPS support)
-- Limited to small memory model (64KB code + 64KB data)
+- Limited to large memory model (64KB per segment)
 - No keep-alive connections
-- Basic HTTP/1.0 and partial HTTP/1.1 support
+- Basic HTTP/1.0 support
 - No cookie management
-- No authentication (except via custom headers)
+- No redirect following
+- No chunked transfer encoding
 
 ## Development Status
 
-See [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) for detailed development roadmap.
+Current status: **Phase 5 Complete** - Timeout customization implemented
 
-Current status: Phase 1 - Project structure and build system complete
+### Completed Phases
+- ✅ Phase 1: Project structure and build system
+- ✅ Phase 2: Basic network connectivity (TCP connection test)
+- ✅ Phase 3: DOSBox-X testing and verification
+- ✅ Phase 4: HTTP POST request implementation
+- ✅ Phase 5: Timeout customization
+
+### Upcoming Features (Phase 6)
+- HTTP redirects (301, 302)
+- Chunked transfer encoding
+- Enhanced error handling
 
 ## License
 

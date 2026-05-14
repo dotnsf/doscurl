@@ -32,7 +32,8 @@
 #define AUTH_LEN          (128)
 #define FILENAME_LEN      (256)
 #define TCP_RECV_BUFFER (4096)
-#define CONNECT_TIMEOUT (10000ul)
+#define DEFAULT_CONNECT_TIMEOUT (10000ul)  // 10 seconds
+#define DEFAULT_MAX_TIME (30000ul)         // 30 seconds
 
 // Globals
 char Hostname[HOSTNAME_LEN];
@@ -44,6 +45,8 @@ int CustomHeaderCount = 0;
 char BasicAuth[AUTH_LEN];
 char OutputFile[FILENAME_LEN];
 int VerboseMode = 0;
+uint32_t ConnectTimeout = DEFAULT_CONNECT_TIMEOUT;  // milliseconds
+uint32_t MaxTime = DEFAULT_MAX_TIME;                // milliseconds
 IpAddr_t HostAddr;
 uint16_t ServerPort = 80;
 TcpSocket *sock = NULL;
@@ -222,8 +225,8 @@ int connectToServer(void) {
   while (1) {
     if (userWantsOut()) return -1;
     
-    if (Timer_diff(start, TIMER_GET_CURRENT()) > TIMER_MS_TO_TICKS(CONNECT_TIMEOUT)) {
-      fprintf(stderr, "timeout\n");
+    if (Timer_diff(start, TIMER_GET_CURRENT()) > TIMER_MS_TO_TICKS(ConnectTimeout)) {
+      fprintf(stderr, "connection timeout after %lu ms\n", ConnectTimeout);
       return -1;
     }
     
@@ -347,8 +350,8 @@ int receiveResponse(void) {
   while (1) {
     if (userWantsOut()) return -1;
     
-    if (Timer_diff(start, TIMER_GET_CURRENT()) > TIMER_MS_TO_TICKS(30000)) {
-      fprintf(stderr, "\nTimeout waiting for data\n");
+    if (Timer_diff(start, TIMER_GET_CURRENT()) > TIMER_MS_TO_TICKS(MaxTime)) {
+      fprintf(stderr, "\nTimeout waiting for data after %lu ms\n", MaxTime);
       break;
     }
     
@@ -447,7 +450,9 @@ int parseArguments(int argc, char *argv[]) {
           strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--data") == 0 ||
           strcmp(argv[i], "-H") == 0 || strcmp(argv[i], "--header") == 0 ||
           strcmp(argv[i], "-u") == 0 || strcmp(argv[i], "--user") == 0 ||
-          strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0) {
+          strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0 ||
+          strcmp(argv[i], "--connect-timeout") == 0 ||
+          strcmp(argv[i], "--max-time") == 0 || strcmp(argv[i], "-m") == 0) {
         // Skip the next argument (option's value)
         i++;
       } else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0) {
@@ -530,6 +535,28 @@ int parseArguments(int argc, char *argv[]) {
       strncpy(OutputFile, argv[++i], FILENAME_LEN - 1);
       OutputFile[FILENAME_LEN - 1] = '\0';
     }
+    else if (strcmp(argv[i], "--connect-timeout") == 0) {
+      if (i + 1 >= argc) {
+        fprintf(stderr, "Error: --connect-timeout requires an argument\n");
+        return -1;
+      }
+      ConnectTimeout = atol(argv[++i]) * 1000;  // Convert seconds to milliseconds
+      if (ConnectTimeout == 0) {
+        fprintf(stderr, "Error: Invalid connect timeout value\n");
+        return -1;
+      }
+    }
+    else if (strcmp(argv[i], "--max-time") == 0 || strcmp(argv[i], "-m") == 0) {
+      if (i + 1 >= argc) {
+        fprintf(stderr, "Error: --max-time requires an argument\n");
+        return -1;
+      }
+      MaxTime = atol(argv[++i]) * 1000;  // Convert seconds to milliseconds
+      if (MaxTime == 0) {
+        fprintf(stderr, "Error: Invalid max time value\n");
+        return -1;
+      }
+    }
     else if (argv[i][0] == '-') {
       fprintf(stderr, "Warning: Unknown option '%s'\n", argv[i]);
     }
@@ -550,6 +577,8 @@ void printUsage(void) {
   fprintf(stderr, "  -u, --user <user:pass>  Basic authentication credentials\n");
   fprintf(stderr, "  -v, --verbose           Verbose output (show connection details)\n");
   fprintf(stderr, "  -o, --output <file>     Write output to file instead of stdout\n");
+  fprintf(stderr, "  -m, --max-time <sec>    Maximum time for the entire operation (default: 30)\n");
+  fprintf(stderr, "  --connect-timeout <sec> Maximum time for connection (default: 10)\n");
   fprintf(stderr, "  --version               Show version information\n");
   fprintf(stderr, "\nExamples:\n");
   fprintf(stderr, "  doscurl http://example.com/\n");
@@ -558,6 +587,7 @@ void printUsage(void) {
   fprintf(stderr, "  doscurl -u \"username:password\" http://example.com/\n");
   fprintf(stderr, "  doscurl -v http://example.com/\n");
   fprintf(stderr, "  doscurl -o output.txt http://example.com/data.json\n");
+  fprintf(stderr, "  doscurl --connect-timeout 5 -m 60 http://example.com/\n");
 }
 
 // Main function

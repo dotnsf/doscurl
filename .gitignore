@@ -1,0 +1,37 @@
+# Build artifacts (C++ project in cpp/ directory)
+cpp/*.obj
+cpp/*.exe
+cpp/*.err
+cpp/*.map
+cpp/*.sym
+
+# Open Watcom intermediate files
+cpp/*.o
+cpp/*.lib
+cpp/*.lst
+
+# Old build artifacts
+build/*.obj
+build/*.exe
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.vs/
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Backup files
+*.bak
+*.old
+
+# Error
+*.err
+
+# Temporary files
+*.tmp
+*.temp

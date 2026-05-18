@@ -192,7 +192,9 @@ int parseUrl(const char *url) {
 
 // Resolve hostname
 int resolveHost(void) {
-  fprintf(stderr, "Resolving %s... ", Hostname);
+  if (VerboseMode) {
+    fprintf(stderr, "Resolving %s... ", Hostname);
+  }
   
   // Initialize HostAddr to zeros
   HostAddr[0] = HostAddr[1] = HostAddr[2] = HostAddr[3] = 0;
@@ -201,14 +203,18 @@ int resolveHost(void) {
   int8_t rc = Dns::resolve(Hostname, HostAddr, 1);
   
   if (rc < 0) {
-    fprintf(stderr, "failed\n");
+    if (VerboseMode) {
+      fprintf(stderr, "failed\n");
+    }
     return -1;
   }
   
   // If rc == 0, it's an IP address and already resolved
   if (rc == 0) {
-    fprintf(stderr, "%d.%d.%d.%d\n",
-            HostAddr[0], HostAddr[1], HostAddr[2], HostAddr[3]);
+    if (VerboseMode) {
+      fprintf(stderr, "%d.%d.%d.%d\n",
+              HostAddr[0], HostAddr[1], HostAddr[2], HostAddr[3]);
+    }
     return 0;
   }
   
@@ -219,7 +225,9 @@ int resolveHost(void) {
   while (!userWantsOut() && Dns::isQueryPending()) {
     // Check for DNS timeout
     if (Timer_diff(start, TIMER_GET_CURRENT()) > TIMER_MS_TO_TICKS(ConnectTimeout)) {
-      fprintf(stderr, "timeout\n");
+      if (VerboseMode) {
+        fprintf(stderr, "timeout\n");
+      }
       return -1;
     }
     
@@ -237,25 +245,33 @@ int resolveHost(void) {
   rc = Dns::resolve(Hostname, HostAddr, 0);
   
   if (rc != 0) {
-    fprintf(stderr, "failed\n");
+    if (VerboseMode) {
+      fprintf(stderr, "failed\n");
+    }
     return -1;
   }
   
   // Check if HostAddr was successfully set
   if (HostAddr[0] == 0 && HostAddr[1] == 0 && HostAddr[2] == 0 && HostAddr[3] == 0) {
-    fprintf(stderr, "failed\n");
+    if (VerboseMode) {
+      fprintf(stderr, "failed\n");
+    }
     return -1;
   }
   
-  fprintf(stderr, "%d.%d.%d.%d\n",
-          HostAddr[0], HostAddr[1], HostAddr[2], HostAddr[3]);
+  if (VerboseMode) {
+    fprintf(stderr, "%d.%d.%d.%d\n",
+            HostAddr[0], HostAddr[1], HostAddr[2], HostAddr[3]);
+  }
   
   return 0;
 }
 
 // Connect to server
 int connectToServer(void) {
-  fprintf(stderr, "Connecting to %s:%u... ", Hostname, ServerPort);
+  if (VerboseMode) {
+    fprintf(stderr, "Connecting to %s:%u... ", Hostname, ServerPort);
+  }
   
   uint16_t localport = 2048 + rand();
   
@@ -300,7 +316,9 @@ int connectToServer(void) {
     }
   }
   
-  fprintf(stderr, "connected\n");
+  if (VerboseMode) {
+    fprintf(stderr, "connected\n");
+  }
   return 0;
 }
 
@@ -365,7 +383,9 @@ int sendRequest(void) {
     pos += snprintf(httpRequest + pos, HTTP_REQUEST_SIZE - pos, "%s", PostData);
   }
   
-  fprintf(stderr, "Sending %s request...\n", HttpMethod);
+  if (VerboseMode) {
+    fprintf(stderr, "Sending %s request...\n", HttpMethod);
+  }
   
   int len = strlen(httpRequest);
   int sent = 0;
@@ -464,7 +484,9 @@ int receiveResponse(void) {
   uint32_t responseLen = 0;
   FILE *outFile = NULL;
   
-  fprintf(stderr, "Receiving response...\n");
+  if (VerboseMode) {
+    fprintf(stderr, "Receiving response...\n");
+  }
   
   clockTicks_t start = TIMER_GET_CURRENT();
   clockTicks_t lastData = start;

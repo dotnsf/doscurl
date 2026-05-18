@@ -194,7 +194,12 @@ int parseUrl(const char *url) {
 int resolveHost(void) {
   fprintf(stderr, "Resolving %s... ", Hostname);
   
+  // Initialize HostAddr to zeros
+  HostAddr[0] = HostAddr[1] = HostAddr[2] = HostAddr[3] = 0;
+  
+  // Start DNS resolution
   int8_t rc = Dns::resolve(Hostname, HostAddr, 1);
+  
   if (rc < 0) {
     fprintf(stderr, "failed\n");
     return -1;
@@ -210,28 +215,33 @@ int resolveHost(void) {
   // rc == 1 means DNS resolution is needed
   clockTicks_t start = TIMER_GET_CURRENT();
   
-  while (1) {
-    if (userWantsOut()) return -1;
-    
-    // Check for DNS timeout (use ConnectTimeout)
+  // Wait for DNS response
+  while (!userWantsOut() && Dns::isQueryPending()) {
+    // Check for DNS timeout
     if (Timer_diff(start, TIMER_GET_CURRENT()) > TIMER_MS_TO_TICKS(ConnectTimeout)) {
-      fprintf(stderr, "DNS timeout after %lu ms\n", ConnectTimeout);
+      fprintf(stderr, "timeout\n");
       return -1;
     }
     
     PACKET_PROCESS_SINGLE;
     Arp::driveArp();
     Tcp::drivePackets();
-    
-    // Check if DNS query is still pending
-    if (!Dns::isQueryPending()) {
-      // DNS resolution complete
-      break;
-    }
+    Dns::drivePendingQuery();
   }
   
-  // Check if HostAddr was successfully set (first byte should not be 0 for valid address)
-  // Note: This is a simple check; a more robust check would verify all bytes
+  if (userWantsOut()) {
+    return -1;
+  }
+  
+  // Get the final result
+  rc = Dns::resolve(Hostname, HostAddr, 0);
+  
+  if (rc != 0) {
+    fprintf(stderr, "failed\n");
+    return -1;
+  }
+  
+  // Check if HostAddr was successfully set
   if (HostAddr[0] == 0 && HostAddr[1] == 0 && HostAddr[2] == 0 && HostAddr[3] == 0) {
     fprintf(stderr, "failed\n");
     return -1;

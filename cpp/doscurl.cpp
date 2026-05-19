@@ -873,7 +873,9 @@ int main(int argc, char *argv[]) {
     return 1;
   }
   
-  rc = Utils::initStack(2, TCP_SOCKET_RING_SIZE, ctrlBreakHandler, ctrlBreakHandler);
+  // Initialize stack with 2 TCP sockets and 4 transmit buffers
+  // Parameters: tcpSockets, tcpXmitBuffers, ctrlBreakHandler, ctrlCHandler
+  rc = Utils::initStack(2, 4, ctrlBreakHandler, ctrlBreakHandler);
   if (rc != 0) {
     fprintf(stderr, "Failed to initialize TCP/IP stack: %d\n", rc);
     fprintf(stderr, "Check packet driver and network configuration\n");

@@ -181,11 +181,35 @@ doscurl/
 ## Limitations
 
 - HTTP only (no HTTPS support)
-- Limited to large memory model (64KB per segment)
+- **Requires Large memory model (-ml)** - Medium (-mm) and Small (-ms) models are not supported
 - No keep-alive connections
 - Basic HTTP/1.0 support
 - No cookie management
 - No chunked transfer encoding
+
+### Memory Model Requirements
+
+DOSCurl **must** be compiled with the **Large memory model (-ml)**. Other memory models are not supported:
+
+| Memory Model | Status | Reason |
+|--------------|--------|--------|
+| **Large (-ml)** | ✅ **Required** | Only model that works with mTCP |
+| Medium (-mm) | ❌ Not supported | Packet buffer initialization fails |
+| Small (-ms) | ❌ Not supported | Packet buffer initialization fails |
+| Compact (-mc) | ❌ Not tested | Likely incompatible with mTCP |
+
+**Technical Details:**
+- mTCP's packet buffer structures exceed the 64KB data segment limit of Medium/Small models
+- Even with minimal `PACKET_BUFFERS` settings (5 buffers), initialization fails
+- The mTCP library is designed for Large memory model usage
+- Attempting to use other models results in "Init: Could not setup packet buffers" error
+
+**Build Configuration:**
+The Makefile is pre-configured with Large memory model:
+```makefile
+memory_model = -ml
+```
+**Do not change this setting** - other memory models will not work.
 
 ## Known Issues
 

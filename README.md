@@ -144,6 +144,14 @@ doscurl -v -X POST -d "data=test" -o result.txt http://example.com/api
 | `--proxy URL` | Use HTTP proxy (e.g., http://proxy:8080) |
 | `--version` | Show version number |
 
+
+### Proxy server example(using **Squid**)
+
+- `$ docker run -d --name squid-proxy -p 3128:3128 ubuntu/squid:latest`
+
+  - `> doscurl --proxy http://(proxy):3128 https://github.com/`
+
+
 ## Output Verbosity Levels
 
 DOSCurl supports three levels of output verbosity:

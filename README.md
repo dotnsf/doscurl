@@ -15,6 +15,7 @@ A lightweight HTTP client for 16-bit PC-DOS environments, inspired by curl.
 - Custom headers support
 - Basic authentication support
 - **HTTP redirect following (301, 302, 303, 307, 308)**
+- **HTTP proxy support (including HTTPS via CONNECT tunneling)**
 - **Detailed error handling with HTTP status codes**
 - **Three-level verbosity control** (quiet, verbose, extra verbose)
 - File output support
@@ -140,6 +141,7 @@ doscurl -v -X POST -d "data=test" -o result.txt http://example.com/api
 | `--max-redirs NUM` | Maximum number of redirects to follow (default: 10) |
 | `-m SECONDS`, `--max-time SECONDS` | Maximum time for the entire operation (default: 30) |
 | `--connect-timeout SECONDS` | Maximum time for connection (default: 10) |
+| `--proxy URL` | Use HTTP proxy (e.g., http://proxy:8080) |
 | `--version` | Show version number |
 
 ## Output Verbosity Levels
@@ -289,7 +291,7 @@ None currently. The program has been tested and works correctly in DOSBox-X with
 
 ## Development Status
 
-Current status: **Phase 6 Complete** - HTTP redirects and error handling implemented
+Current status: **Phase 7 Complete** - HTTP proxy support implemented
 
 ### Completed Phases
 - ✅ Phase 1: Project structure and build system
@@ -298,10 +300,11 @@ Current status: **Phase 6 Complete** - HTTP redirects and error handling impleme
 - ✅ Phase 4: HTTP POST request implementation
 - ✅ Phase 5: Timeout customization
 - ✅ Phase 6: HTTP redirects and detailed error handling
+- ✅ Phase 7: HTTP proxy support (including HTTPS via CONNECT tunneling)
 
 ### Future Enhancements
 - Chunked transfer encoding
-- HTTP proxy support
+- Proxy authentication support
 - Progress indicators for large transfers
 
 ## License

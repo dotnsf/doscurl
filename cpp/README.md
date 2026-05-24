@@ -10,6 +10,7 @@ A simple HTTP client for 16-bit DOS, built with mTCP.
 - Basic authentication
 - Redirect following (up to 10 redirects)
 - Verbose output modes (curl-style)
+- **HTTP proxy support (including HTTPS via CONNECT tunneling)**
 - DNS resolution
 - Configurable timeouts
 - Save output to file
@@ -48,6 +49,7 @@ doscurl http://example.com/
 ### Command Line Options
 
 - `-X, --request <method>` - HTTP method (GET, POST, PUT, DELETE, etc.)
+- `--proxy <url>` - Use HTTP proxy (e.g., http://proxy:8080)
 - `-d, --data <data>` - POST data
 - `-H, --header <header>` - Custom HTTP header (can be used multiple times)
 - `-u, --user <user:pass>` - Basic authentication
@@ -162,6 +164,91 @@ doscurl --connect-timeout 5000 --max-time 15000 http://slow-server.com/
 doscurl -vv http://example.com/
 ```
 
+**Using HTTP proxy:**
+```
+doscurl --proxy http://proxy.example.com:8080 http://example.com/
+```
+
+**Using HTTP proxy for HTTPS (via CONNECT tunnel):**
+```
+doscurl --proxy http://proxy.example.com:8080 https://example.com/
+```
+
+**Proxy with verbose output:**
+```
+doscurl -vv --proxy http://localhost:3128 https://www.google.com/
+```
+
+## HTTP Proxy Support
+
+DOSCurl supports HTTP proxies, enabling access to both HTTP and HTTPS sites through a proxy server.
+
+### How It Works
+
+**For HTTP requests:**
+- DOSCurl connects to the proxy
+- Sends HTTP request with absolute URL (e.g., `GET http://example.com/ HTTP/1.0`)
+- Proxy forwards the request to the target server
+
+**For HTTPS requests:**
+- DOSCurl connects to the proxy
+- Sends `CONNECT` request to establish a tunnel
+- Proxy creates a TCP tunnel to the target server
+- DOSCurl sends regular HTTP requests through the tunnel
+- **Note:** DOSCurl does not perform TLS encryption; the proxy handles all HTTPS/TLS processing
+
+### Proxy Configuration
+
+Use the `--proxy` option to specify a proxy server:
+
+```
+--proxy http://hostname:port
+--proxy hostname:port          # http:// is optional
+```
+
+Default proxy port: 8080
+
+### Self-Signed Certificates
+
+When accessing HTTPS sites with self-signed certificates through a proxy:
+
+- Certificate validation is handled by the **proxy server**, not DOSCurl
+- Configure your proxy to ignore certificate errors:
+  - **Squid**: `sslproxy_cert_error allow all`
+  - **stunnel**: `verify = 0`
+  - **mitmproxy**: `--ssl-insecure`
+
+### Proxy Examples
+
+**Simple HTTP proxy:**
+```
+doscurl --proxy http://proxy.local:8080 http://example.com/
+```
+
+**HTTPS via proxy (CONNECT tunnel):**
+```
+doscurl --proxy http://proxy.local:8080 https://secure.example.com/
+```
+
+**Proxy with authentication (if supported by proxy):**
+```
+# Note: Proxy authentication is not yet implemented in DOSCurl
+# Use a local proxy without authentication
+```
+
+**Using stunnel as HTTPS proxy:**
+```
+# stunnel.conf:
+[https-proxy]
+client = yes
+accept = 127.0.0.1:8080
+connect = target-server.com:443
+verify = 0
+
+# DOSCurl command:
+doscurl --proxy http://127.0.0.1:8080 https://target-server.com/
+```
+
 ## Configuration
 
 DOSCurl uses mTCP, which requires a configuration file `MTCP.CFG` in the current directory or pointed to by the `MTCP_CFG` environment variable.
@@ -185,11 +272,12 @@ NAMESERVER 8.8.8.8
 
 ## Limitations
 
-- HTTP only (no HTTPS support)
+- **Direct HTTPS not supported** (use `--proxy` for HTTPS access)
 - No chunked transfer encoding support
 - No compression support (gzip, deflate)
 - Maximum response size: 64KB
 - Maximum request size: 4KB
+- Proxy authentication not yet implemented
 
 ## License
 

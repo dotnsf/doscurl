@@ -55,6 +55,13 @@ uint16_t ServerPort = 80;
 TcpSocket *sock = NULL;
 int LastHttpStatus = 0;  // Last HTTP status code received
 
+// Proxy support
+char ProxyHostname[HOSTNAME_LEN];
+uint16_t ProxyPort = 0;
+IpAddr_t ProxyAddr;
+int UseProxy = 0;  // 0=direct connection, 1=use proxy
+int IsHttps = 0;   // 0=http, 1=https (for CONNECT method)
+
 // Large buffers (dynamically allocated to avoid mTCP heap check false positives)
 uint8_t *responseData = NULL;
 uint8_t *recvBuffer = NULL;
@@ -105,6 +112,17 @@ void base64_encode(const char *input, char *output, int input_len) {
   
   output[j] = '\0';
 }
+// Forward declarations
+int parseProxyUrl(const char *url);
+int parseUrl(const char *url);
+int resolveHost(void);
+int connectToServer(void);
+int sendConnectRequest(void);
+int sendRequest(void);
+int receiveResponse(void);
+int parseArguments(int argc, char *argv[]);
+void printUsage(void);
+
 
 // Shutdown and exit
 static void shutdown(int rc) {
@@ -133,13 +151,74 @@ static void shutdown(int rc) {
   exit(rc);
 }
 
+// Parse proxy URL
+int parseProxyUrl(const char *url) {
+  const char *p = url;
+  
+  // Skip http:// if present
+  if (strncmp(p, "http://", 7) == 0) {
+    p += 7;
+  }
+  
+  // Extract hostname and port
+  const char *colon = strchr(p, ':');
+  const char *slash = strchr(p, '/');
+  
+  // Ignore anything after slash (proxy URLs shouldn't have paths)
+  if (slash && colon && colon > slash) {
+    colon = NULL;
+  }
+  
+  int hostLen;
+  if (colon) {
+    // Port specified
+    hostLen = colon - p;
+    if (hostLen >= HOSTNAME_LEN) hostLen = HOSTNAME_LEN - 1;
+    strncpy(ProxyHostname, p, hostLen);
+    ProxyHostname[hostLen] = '\0';
+    ProxyPort = atoi(colon + 1);
+    if (ProxyPort == 0) {
+      ProxyPort = 8080;  // Default if invalid port
+    }
+  } else {
+    // No port specified, use default
+    if (slash) {
+      hostLen = slash - p;
+    } else {
+      hostLen = strlen(p);
+    }
+    if (hostLen >= HOSTNAME_LEN) hostLen = HOSTNAME_LEN - 1;
+    strncpy(ProxyHostname, p, hostLen);
+    ProxyHostname[hostLen] = '\0';
+    ProxyPort = 8080;  // Default proxy port
+  }
+  
+  UseProxy = 1;
+  
+  if (VerboseMode >= 2) {
+    fprintf(stderr, "* Using proxy: %s:%u\n", ProxyHostname, ProxyPort);
+  }
+  
+  return 0;
+}
+
 // Parse URL
 int parseUrl(const char *url) {
   const char *p = url;
   
-  // Skip http://
-  if (strncmp(p, "http://", 7) == 0) {
+  // Check for https://
+  if (strncmp(p, "https://", 8) == 0) {
+    IsHttps = 1;
+    ServerPort = 443;
+    p += 8;
+  } else if (strncmp(p, "http://", 7) == 0) {
+    IsHttps = 0;
+    ServerPort = 80;
     p += 7;
+  } else {
+    // No protocol specified, assume http
+    IsHttps = 0;
+    ServerPort = 80;
   }
   
   // Extract hostname
@@ -190,17 +269,21 @@ int parseUrl(const char *url) {
   return 0;
 }
 
-// Resolve hostname
+// Resolve hostname (or proxy hostname if using proxy)
 int resolveHost(void) {
+  // Determine which host to resolve
+  const char *targetHost = UseProxy ? ProxyHostname : Hostname;
+  IpAddr_t *targetAddr = UseProxy ? &ProxyAddr : &HostAddr;
+  
   if (VerboseMode >= 2) {
-    fprintf(stderr, "* Resolving %s... ", Hostname);
+    fprintf(stderr, "* Resolving %s... ", targetHost);
   }
   
-  // Initialize HostAddr to zeros
-  HostAddr[0] = HostAddr[1] = HostAddr[2] = HostAddr[3] = 0;
+  // Initialize target address to zeros
+  (*targetAddr)[0] = (*targetAddr)[1] = (*targetAddr)[2] = (*targetAddr)[3] = 0;
   
   // Start DNS resolution
-  int8_t rc = Dns::resolve(Hostname, HostAddr, 1);
+  int8_t rc = Dns::resolve(targetHost, *targetAddr, 1);
   
   if (rc < 0) {
     if (VerboseMode >= 2) {
@@ -213,7 +296,7 @@ int resolveHost(void) {
   if (rc == 0) {
     if (VerboseMode >= 2) {
       fprintf(stderr, "* Resolved to %d.%d.%d.%d\n",
-              HostAddr[0], HostAddr[1], HostAddr[2], HostAddr[3]);
+              (*targetAddr)[0], (*targetAddr)[1], (*targetAddr)[2], (*targetAddr)[3]);
     }
     return 0;
   }
@@ -242,7 +325,7 @@ int resolveHost(void) {
   }
   
   // Get the final result
-  rc = Dns::resolve(Hostname, HostAddr, 0);
+  rc = Dns::resolve(targetHost, *targetAddr, 0);
   
   if (rc != 0) {
     if (VerboseMode >= 2) {
@@ -251,8 +334,9 @@ int resolveHost(void) {
     return -1;
   }
   
-  // Check if HostAddr was successfully set
-  if (HostAddr[0] == 0 && HostAddr[1] == 0 && HostAddr[2] == 0 && HostAddr[3] == 0) {
+  // Check if target address was successfully set
+  if ((*targetAddr)[0] == 0 && (*targetAddr)[1] == 0 &&
+      (*targetAddr)[2] == 0 && (*targetAddr)[3] == 0) {
     if (VerboseMode >= 2) {
       fprintf(stderr, "* DNS resolution failed\n");
     }
@@ -261,16 +345,25 @@ int resolveHost(void) {
   
   if (VerboseMode >= 2) {
     fprintf(stderr, "* Resolved to %d.%d.%d.%d\n",
-            HostAddr[0], HostAddr[1], HostAddr[2], HostAddr[3]);
+            (*targetAddr)[0], (*targetAddr)[1], (*targetAddr)[2], (*targetAddr)[3]);
   }
   
   return 0;
 }
 
-// Connect to server
+// Connect to server (or proxy if using proxy)
 int connectToServer(void) {
+  // Determine connection target
+  const char *targetHost = UseProxy ? ProxyHostname : Hostname;
+  uint16_t targetPort = UseProxy ? ProxyPort : ServerPort;
+  IpAddr_t *targetAddr = UseProxy ? &ProxyAddr : &HostAddr;
+  
   if (VerboseMode >= 2) {
-    fprintf(stderr, "* Connecting to %s:%u... ", Hostname, ServerPort);
+    if (UseProxy) {
+      fprintf(stderr, "* Connecting to proxy %s:%u... ", targetHost, targetPort);
+    } else {
+      fprintf(stderr, "* Connecting to %s:%u... ", targetHost, targetPort);
+    }
   }
   
   uint16_t localport = 2048 + rand();
@@ -286,7 +379,7 @@ int connectToServer(void) {
     return -1;
   }
   
-  if (sock->connectNonBlocking(localport, HostAddr, ServerPort)) {
+  if (sock->connectNonBlocking(localport, *targetAddr, targetPort)) {
     fprintf(stderr, "failed to initiate connection\n");
     return -1;
   }
@@ -319,16 +412,159 @@ int connectToServer(void) {
   if (VerboseMode >= 2) {
     fprintf(stderr, "* Connected\n");
   }
+  
+  // If using proxy for HTTPS, establish CONNECT tunnel
+  if (UseProxy && IsHttps) {
+    if (sendConnectRequest() < 0) {
+      return -1;
+    }
+  }
+  
   return 0;
 }
+// Send HTTP CONNECT request for HTTPS tunneling
+int sendConnectRequest(void) {
+  int pos = 0;
+  
+  // Build CONNECT request
+  pos += snprintf(httpRequest + pos, HTTP_REQUEST_SIZE - pos,
+                  "CONNECT %s:%u HTTP/1.1\r\n", Hostname, ServerPort);
+  
+  // Add Host header
+  pos += snprintf(httpRequest + pos, HTTP_REQUEST_SIZE - pos,
+                  "Host: %s:%u\r\n", Hostname, ServerPort);
+  
+  // Add User-Agent header
+  pos += snprintf(httpRequest + pos, HTTP_REQUEST_SIZE - pos,
+                  "User-Agent: DOSCurl/%s\r\n", DOSCURL_VERSION);
+  
+  // Add Proxy-Connection header
+  pos += snprintf(httpRequest + pos, HTTP_REQUEST_SIZE - pos,
+                  "Proxy-Connection: Keep-Alive\r\n");
+  
+  // End of headers
+  pos += snprintf(httpRequest + pos, HTTP_REQUEST_SIZE - pos, "\r\n");
+  
+  if (VerboseMode >= 2) {
+    fprintf(stderr, "* Sending CONNECT request to proxy...\n");
+    fprintf(stderr, "* CONNECT %s:%u HTTP/1.1\n", Hostname, ServerPort);
+  }
+  
+  // Send CONNECT request
+  int16_t rc = sock->send((uint8_t *)httpRequest, pos);
+  if (rc < 0) {
+    fprintf(stderr, "Error: Failed to send CONNECT request\n");
+    return -1;
+  }
+  
+  // Wait for proxy response
+  uint32_t responseLen = 0;
+  clockTicks_t start = TIMER_GET_CURRENT();
+  
+  while (responseLen < RESPONSE_DATA_SIZE - 1) {
+    if (userWantsOut()) return -1;
+    
+    // Check for timeout
+    if (Timer_diff(start, TIMER_GET_CURRENT()) > TIMER_MS_TO_TICKS(ConnectTimeout)) {
+      fprintf(stderr, "Error: CONNECT request timeout\n");
+      return -1;
+    }
+    
+    PACKET_PROCESS_SINGLE;
+    Arp::driveArp();
+    Tcp::drivePackets();
+    
+    int16_t rc = sock->recv(recvBuffer, RECV_BUFFER_SIZE);
+    
+    if (rc > 0) {
+      // Data received
+      if (responseLen + rc < RESPONSE_DATA_SIZE) {
+        memcpy(responseData + responseLen, recvBuffer, rc);
+        responseLen += rc;
+        responseData[responseLen] = '\0';
+      }
+      
+      // Check if we have complete response (look for \r\n\r\n)
+      if (responseLen >= 4) {
+        for (uint32_t i = 0; i < responseLen - 3; i++) {
+          if (responseData[i] == '\r' && responseData[i+1] == '\n' &&
+              responseData[i+2] == '\r' && responseData[i+3] == '\n') {
+            // Found end of headers
+            goto parse_connect_response;
+          }
+        }
+      }
+    } else if (rc < 0) {
+      fprintf(stderr, "Error: Failed to receive CONNECT response\n");
+      return -1;
+    }
+  }
+  
+parse_connect_response:
+  // Parse status line
+  char statusLine[128];
+  int statusLineLen = 0;
+  
+  for (uint32_t i = 0; i < responseLen && i < sizeof(statusLine) - 1; i++) {
+    if (responseData[i] == '\r' || responseData[i] == '\n') {
+      break;
+    }
+    statusLine[statusLineLen++] = responseData[i];
+  }
+  statusLine[statusLineLen] = '\0';
+  
+  if (VerboseMode >= 2) {
+    fprintf(stderr, "* Proxy response: %s\n", statusLine);
+  }
+  
+  // Check for "200 Connection established" or similar
+  // Format: HTTP/1.x 200 ...
+  if (strncmp(statusLine, "HTTP/", 5) != 0) {
+    fprintf(stderr, "Error: Invalid CONNECT response\n");
+    return -1;
+  }
+  
+  // Find status code
+  const char *statusCode = strchr(statusLine, ' ');
+  if (!statusCode) {
+    fprintf(stderr, "Error: Invalid CONNECT response format\n");
+    return -1;
+  }
+  statusCode++; // Skip space
+  
+  int code = atoi(statusCode);
+  if (code != 200) {
+    fprintf(stderr, "Error: Proxy returned status %d\n", code);
+    if (code == 407) {
+      fprintf(stderr, "Error: Proxy authentication required\n");
+    }
+    return -1;
+  }
+  
+  if (VerboseMode >= 2) {
+    fprintf(stderr, "* CONNECT tunnel established\n");
+  }
+  
+  return 0;
+}
+
 
 // Send HTTP request
 int sendRequest(void) {
   int pos = 0;
   
   // Build request line
-  pos += snprintf(httpRequest + pos, HTTP_REQUEST_SIZE - pos,
-                  "%s %s HTTP/1.0\r\n", HttpMethod, Path);
+  // For HTTP via proxy (not HTTPS), use absolute URL
+  if (UseProxy && !IsHttps) {
+    // HTTP via proxy: use absolute URL
+    pos += snprintf(httpRequest + pos, HTTP_REQUEST_SIZE - pos,
+                    "%s http://%s:%u%s HTTP/1.0\r\n",
+                    HttpMethod, Hostname, ServerPort, Path);
+  } else {
+    // Direct connection or HTTPS via proxy: use relative URL
+    pos += snprintf(httpRequest + pos, HTTP_REQUEST_SIZE - pos,
+                    "%s %s HTTP/1.0\r\n", HttpMethod, Path);
+  }
   
   // Add Host header
   pos += snprintf(httpRequest + pos, HTTP_REQUEST_SIZE - pos,
@@ -679,7 +915,8 @@ int parseArguments(int argc, char *argv[]) {
           strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0 ||
           strcmp(argv[i], "--connect-timeout") == 0 ||
           strcmp(argv[i], "--max-time") == 0 || strcmp(argv[i], "-m") == 0 ||
-          strcmp(argv[i], "--max-redirs") == 0) {
+          strcmp(argv[i], "--max-redirs") == 0 ||
+          strcmp(argv[i], "--proxy") == 0) {
         // Skip the next argument (option's value)
         i++;
       } else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0 ||
@@ -802,6 +1039,16 @@ int parseArguments(int argc, char *argv[]) {
         return -1;
       }
     }
+    else if (strcmp(argv[i], "--proxy") == 0) {
+      if (i + 1 >= argc) {
+        fprintf(stderr, "Error: --proxy requires an argument\n");
+        return -1;
+      }
+      if (parseProxyUrl(argv[++i]) < 0) {
+        fprintf(stderr, "Error: Invalid proxy URL\n");
+        return -1;
+      }
+    }
     else if (argv[i][0] == '-') {
       fprintf(stderr, "Warning: Unknown option '%s'\n", argv[i]);
     }
@@ -827,9 +1074,11 @@ void printUsage(void) {
   fprintf(stderr, "  --max-redirs <num>      Maximum number of redirects to follow (default: 10)\n");
   fprintf(stderr, "  -m, --max-time <sec>    Maximum time for the entire operation (default: 30)\n");
   fprintf(stderr, "  --connect-timeout <sec> Maximum time for connection (default: 10)\n");
+  fprintf(stderr, "  --proxy <url>           Use HTTP proxy (e.g., http://proxy:8080)\n");
   fprintf(stderr, "  --version               Show version information\n");
   fprintf(stderr, "\nExamples:\n");
   fprintf(stderr, "  doscurl http://example.com/\n");
+  fprintf(stderr, "  doscurl --proxy http://proxy:8080 https://example.com/\n");
   fprintf(stderr, "  doscurl -X POST -d \"key=value\" http://example.com/api\n");
   fprintf(stderr, "  doscurl -H \"Authorization: Bearer token\" http://example.com/\n");
   fprintf(stderr, "  doscurl -u \"username:password\" http://example.com/\n");

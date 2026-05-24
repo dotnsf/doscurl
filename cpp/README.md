@@ -4,9 +4,15 @@ A simple HTTP client for 16-bit DOS, built with mTCP.
 
 ## Features
 
-- HTTP/1.0 GET requests
+- HTTP/1.0 and HTTP/1.1 support
+- GET and POST requests
+- Custom HTTP headers
+- Basic authentication
+- Redirect following (up to 10 redirects)
+- Verbose output modes (curl-style)
 - DNS resolution
-- Simple command-line interface
+- Configurable timeouts
+- Save output to file
 - Based on mTCP TCP/IP stack
 
 ## Requirements
@@ -39,12 +45,121 @@ This will create `doscurl.exe`.
 doscurl http://example.com/
 ```
 
+### Command Line Options
+
+- `-X, --request <method>` - HTTP method (GET, POST, PUT, DELETE, etc.)
+- `-d, --data <data>` - POST data
+- `-H, --header <header>` - Custom HTTP header (can be used multiple times)
+- `-u, --user <user:pass>` - Basic authentication
+- `-o, --output <file>` - Save output to file
+- `-L, --location` - Follow redirects (default: off)
+- `--max-redirs <num>` - Maximum redirects (default: 10)
+- `--connect-timeout <ms>` - Connection timeout in milliseconds (default: 10000)
+- `--max-time <ms>` - Maximum time for entire operation (default: 30000)
+- `-v` - Verbose mode: show HTTP request and response headers
+- `-vv` - Extra verbose mode: show all debug messages
+- `-h, --help` - Show help message
+
+### Verbosity Levels
+
+**Default (no option)**: Output HTTP response body only
+```
+doscurl http://example.com/
+```
+
+**`-v` option**: Show HTTP request (prefixed with `> `), response headers (prefixed with `< `), and body
+```
+doscurl -v http://example.com/
+```
+Output example:
+```
+> GET / HTTP/1.1
+> Host: example.com
+> User-Agent: DOSCurl/1.0
+>
+< HTTP/1.1 200 OK
+< Content-Type: text/html
+< Content-Length: 1234
+<
+<!DOCTYPE html>
+<html>...
+```
+
+**`-vv` option**: Show all `-v` content plus debug messages (prefixed with `* `)
+```
+doscurl -vv http://example.com/
+```
+Output example:
+```
+* Method: GET
+* Host: example.com
+* Port: 80
+* Path: /
+*
+* Resolving example.com... 93.184.216.34
+* Connecting to 93.184.216.34:80...
+* Connected
+* Sending request...
+> GET / HTTP/1.1
+> Host: example.com
+> User-Agent: DOSCurl/1.0
+>
+* Receiving response...
+< HTTP/1.1 200 OK
+< Content-Type: text/html
+< Content-Length: 1234
+<
+<!DOCTYPE html>
+<html>...
+*
+* Received 1234 bytes total
+```
+
 ### Examples
 
+**Simple GET request:**
 ```
 doscurl http://www.brutman.com/
-doscurl http://example.com/index.html
-doscurl http://192.168.1.1:8080/api
+```
+
+**GET with verbose output:**
+```
+doscurl -v http://example.com/index.html
+```
+
+**POST request with data:**
+```
+doscurl -X POST -d "name=value" http://example.com/api
+```
+
+**Custom headers:**
+```
+doscurl -H "Accept: application/json" -H "X-API-Key: secret" http://api.example.com/
+```
+
+**Basic authentication:**
+```
+doscurl -u username:password http://example.com/protected
+```
+
+**Save to file:**
+```
+doscurl -o output.html http://example.com/
+```
+
+**Follow redirects:**
+```
+doscurl -L http://example.com/redirect
+```
+
+**Custom timeout:**
+```
+doscurl --connect-timeout 5000 --max-time 15000 http://slow-server.com/
+```
+
+**Extra verbose debugging:**
+```
+doscurl -vv http://example.com/
 ```
 
 ## Configuration
@@ -70,11 +185,11 @@ NAMESERVER 8.8.8.8
 
 ## Limitations
 
-- HTTP only (no HTTPS)
-- GET requests only (POST support planned)
-- No redirect following
-- No chunked transfer encoding support yet
-- Basic error handling
+- HTTP only (no HTTPS support)
+- No chunked transfer encoding support
+- No compression support (gzip, deflate)
+- Maximum response size: 64KB
+- Maximum request size: 4KB
 
 ## License
 

@@ -1,0 +1,481 @@
+Open Watcom Linker Version 2.0 beta May 10 2026 04:44:38 (32-bit)
+Copyright (c) 2002-2026 The Open Watcom Contributors. All Rights Reserved.
+Portions Copyright (c) 1985-2002 Sybase, Inc. All Rights Reserved.
+新規作成:       26/05/24 12:45:05
+警告(1008): C:\mTCP\TCPLIB\MTCPWL.LIB をオープン出来ません : No such file or directory
+実行可能イメージ: build\doscurl.exe
+a DOS 実行可能 を作成中
+エラー(2028): void __far TcpSocket::close() は未定義参照です
+エラー(2028): char signed __far TcpSocketMgr::freeSocket( TcpSocket __far * ) は未定義参照です
+エラー(2028): void __far Utils::endStack2( bool ) は未定義参照です
+エラー(2028): char signed __far Dns::resolve( char const __far *, char unsigned __far *, char unsigned ) は未定義参照です
+エラー(2028): long unsigned volatile __far Timer_CurrentTicks は未定義参照です
+エラー(2028): char unsigned __far Dns::queryPending は未定義参照です
+エラー(2028): char unsigned __far Buffer_first は未定義参照です
+エラー(2028): char unsigned __far Buffer_next は未定義参照です
+エラー(2028): void __far Packet_process_internal() は未定義参照です
+エラー(2028): char unsigned __far mTCP_sleepCallEnabled は未定義参照です
+エラー(2028): char unsigned __far mTCP_releaseTimesliceEnabled は未定義参照です
+エラー(2028): char unsigned __far Ip::fragsInReassembly は未定義参照です
+エラー(2028): void __far Ip::purgeOverdue() は未定義参照です
+エラー(2028): short unsigned __far Arp::pendingEntries は未定義参照です
+エラー(2028): void __far Arp::driveArp2() は未定義参照です
+エラー(2028): short unsigned __far Tcp::Pending_Sent は未定義参照です
+エラー(2028): short unsigned __far Tcp::Pending_Outgoing は未定義参照です
+エラー(2028): void __far Tcp::drivePackets2() は未定義参照です
+エラー(2028): void __far Dns::drivePendingQuery1() は未定義参照です
+エラー(2028): TcpSocket __far * __far TcpSocketMgr::getSocket() は未定義参照です
+エラー(2028): char signed __far TcpSocket::setRecvBuffer( short unsigned ) は未定義参照です
+エラー(2028): char signed __far TcpSocket::connectNonBlocking( short unsigned, char unsigned __far *, short unsigned ) は未定義参照です
+エラー(2028): short __far TcpSocket::send( char unsigned __far *, short unsigned ) は未定義参照です
+エラー(2028): short __far TcpSocket::recv( char unsigned __far *, short unsigned ) は未定義参照です
+エラー(2028): char signed __far Utils::parseEnv() は未定義参照です
+エラー(2028): char signed __far Utils::initStack( char unsigned, char unsigned, void (__far *)(), void (__far *)()) は未定義参照です
+
+
+                        +------------+
+                        |  グループ  |
+                        +------------+
+
+グループ                        アドレス             サイズ
+=====                           =======              ====
+
+DGROUP                          06ec:0000            00002aa0
+
+
+
+                        +--------------+
+                        |  セグメント  |
+                        +--------------+
+
+セグメント             クラス         グループ      アドレス        サイズ
+=========              ======         =========      ========        ======
+
+doscurl_TEXT           CODE           AUTO           0000:0000       00002055
+_TEXT                  CODE           AUTO           0000:2060       00003fb8
+fsroot_TEXT            CODE           AUTO           0000:6018       0000000b
+cppdata_TEXT           CODE           AUTO           0000:6023       00000000
+doscurl_DATA1          FAR_CONST      AUTO           0602:0003       00000e9c
+fsroot_DATA1           FAR_CONST      AUTO           06ec:0000       00000000
+cppdata_DATA1          FAR_CONST      AUTO           06ec:0000       00000000
+FAR_DATA               FAR_DATA       AUTO           06ec:0000       00000000
+_NULL                  BEGDATA        DGROUP         06ec:0000       00000020
+_AFTERNULL             BEGDATA        DGROUP         06ee:0000       00000002
+CONST                  DATA           DGROUP         06ee:0002       00000050
+CONST2                 DATA           DGROUP         06f4:0000       00000169
+_DATA                  DATA           DGROUP         070b:0000       00000228
+XIB                    DATA           DGROUP         072d:0008       00000000
+XI                     DATA           DGROUP         072d:0008       00000024
+XIE                    DATA           DGROUP         072f:000c       00000000
+YIB                    DATA           DGROUP         072f:000c       00000000
+YI                     DATA           DGROUP         072f:000c       00000012
+YIE                    DATA           DGROUP         0730:000e       00000000
+DATA                   DATA           DGROUP         0730:000e       00000000
+_BSS                   BSS            DGROUP         0731:0000       00001e4a
+STACK                  STACK          DGROUP         0916:0000       00000800
+
+
+                        +----------------+
+                        | メモリ・マップ |
+                        +----------------+
+
+* = 参照されないシンボル
++ = シンボルはローカルでの参照のみです
+
+アドレス       シンボル
+========       ========
+
+モジュール: build\doscurl.obj(build\doscurl.obj)
+06ec:0450+     char __far Hostname[]
+06ec:04a0+     char __far Path[]
+06ec:05a0+     char __far PostData[]
+06ec:15a0+     char __far CustomHeaders[][256]
+06ec:1fa0+     int __far CustomHeaderCount
+06ec:1fa8+     char __far BasicAuth[]
+06ec:2028+     char __far OutputFile[]
+06ec:2128+     int __far VerboseMode
+06ec:212c+     char unsigned __far HostAddr[]
+06ec:2130+     TcpSocket __far * __far sock
+0000:0000+     void __far ctrlBreakHandler()
+0000:0026+     char unsigned __far userWantsOut()
+0000:004e+     void __far base64_encode( char const __far *, char __far *, int )
+0000:027a+     int __far parseUrl( char const __far * )
+0000:040b+     int __far resolveHost()
+0000:0634+     int __far connectToServer()
+0000:07f9+     int __far sendRequest()
+0000:0bbd+     int __far parseHttpStatus( char const __far * )
+0000:0c0d+     int __far extractLocation( char unsigned const __far *, long unsigned, char __far *, int )
+0000:0cf9+     int __far receiveResponse()
+0000:1256+     int __far parseArguments( int, char __far * __far * )
+0000:1952+     void __far printUsage()
+0000:1b5b      main_
+06ec:01f0+     char __far HttpMethod[]
+06ec:0200+     int __far FollowRedirects
+06ec:0202+     int __far MaxRedirects
+06ec:0204+     long unsigned __far ConnectTimeout
+06ec:0208+     long unsigned __far MaxTime
+06ec:020c+     short unsigned __far ServerPort
+06ec:2134+     int __far LastHttpStatus
+06ec:2136+     char unsigned __far * __far responseData
+06ec:213a+     char unsigned __far * __far recvBuffer
+06ec:213e+     char __far * __far httpRequest
+06ec:2142+     char __far * __far base64Buffer
+06ec:2146+     char unsigned volatile __far CtrlBreakDetected
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(stk)
+0000:2065      __STK
+0000:2085*     __STKOVERFLOW_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(iob.c)
+06ec:0210      ___iob
+06ec:2148      ___OpenStreams
+06ec:214c      ___ClosedStreams
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(fprintf.c)
+0000:20a0      fprintf_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(ffree.c)
+0000:20bf      _ffree_
+0000:20bf      free_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(exit.c)
+0000:2107+     __null_int23_exit_
+0000:2108      exit_
+0000:2133*     _exit_
+06ec:0378+     ___int23_exit
+06ec:037a+     ___FPE_handler_exit
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(strncmp.c)
+0000:214c      strncmp_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(strchr.c)
+0000:2189      strchr_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(strncpy.c)
+0000:21ab      strncpy_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(atoi.c)
+0000:21e7      atoi_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(strcpy.c)
+0000:2257      strcpy_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(i4d)
+0000:22a0*     __I4D
+0000:22ef      __U4D
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(rand.c)
+0000:2373      rand_
+0000:23b5*     srand_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(snprintf.c)
+0000:240f+     vsnprintf_
+0000:2487      snprintf_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(strlen.c)
+0000:24a8      strlen_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(fwrite.c)
+0000:24bd      fwrite_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(memcpy.c)
+0000:269e      memcpy_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(fopen.c)
+0000:26c0+     __open_flags_
+0000:28a7+     _fsopen_
+0000:2908      fopen_
+0000:29dc*     freopen_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(fclose.c)
+0000:2a48      __doclose_
+0000:2b06      __shutdown_stream_
+0000:2b1d      fclose_
+06ec:2150+     ___RmTmpFileFn
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(strcmp.c)
+0000:2b67      strcmp_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(toupper.c)
+0000:2b8f      toupper_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(atol.c)
+0000:2b9d      atol_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(i4m)
+0000:2c1c      __I4M
+0000:2c1c      __U4M
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(fmalloc.c)
+0000:2c34      _fmalloc_
+0000:2c34      malloc_
+06ec:0380+     ___fheapbeg
+06ec:0382      ___fheapRover
+06ec:0384      ___LargestSizeB4Rover
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(cstart)
+06ec:0000*     __nullarea
+06ec:0386*     __ovlflag
+06ec:0387*     __intno
+06ec:0388*     __ovlvec
+0000:2d46      _cstart_
+0000:2ef1      __exit_
+0000:2f0e      __do_exit_with_msg_
+0000:2feb      __GETDS
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(cmodel)
+0000:2ff6      _big_code_
+0000:2ff6*     CodeModelMismatch
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(argcv.c)
+06ec:2152      __argv
+06ec:2156      ___argv
+06ec:215a      __argc
+06ec:215c      ___argc
+モジュール: C:\WATCOM\lib286\plibl.lib(fsroot.cpp)
+06ec:0430      ___wcpp_4_data_init_fs_root_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(xmsg.c)
+0000:2ff6*     __exit_with_msg_
+0000:2ff9      __fatal_runtime_error_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(crwdata)
+06ec:038c      __curbrk
+06ec:0394      __STACKLOW
+06ec:0396      __STACKTOP
+06ec:0398      __cbyte
+06ec:039a      __child
+06ec:039c      __no87
+06ec:03a9      ___FPE_handler
+06ec:038e      __psp
+06ec:039d      __get_ovl_stack
+06ec:03a1      __restore_ovl_stack
+06ec:03a5      __close_ovl_file
+06ec:03ad      __LpCmdLine
+06ec:03b1      __LpPgmName
+06ec:0390      __osmajor
+06ec:0391      __osminor
+06ec:0392      __osmode
+06ec:0393      __HShift
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(initfile.c)
+0000:3012      __InitFiles_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(ioexit.c)
+0000:3169*     fcloseall_
+0000:3170      __full_io_exit_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(fprtf.c)
+0000:3194      __fprtf_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(nmalloc.c)
+0000:3257      _nmalloc_
+06ec:03b6      ___nheapbeg
+06ec:03b8      ___MiniHeapRover
+06ec:03ba      ___LargestSizeB4MiniHeapRover
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(mem.c)
+0000:3330      __MemAllocator
+0000:33f6      __MemFree
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(nfree.c)
+0000:356d      _nfree_
+06ec:215e+     ___MiniHeapFreeRover
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(initrtns.c)
+0000:369c      __InitRtns
+0000:36f3      __FiniRtns
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(istable.c)
+06ec:00c2      __IsTable
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(prtf.c)
+0000:4294      __prtf_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(qwrit.c)
+0000:44c8      __qwrite_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(errno.c)
+0000:4524*     __get_errno_ptr_
+06ec:2160      _errno
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(ioalloc.c)
+0000:452b      __ioalloc_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(flush.c)
+0000:45c3      __flush_
+0000:46f5*     __clib_flush_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(fputc.c)
+0000:46f9      fputc_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(comtflag.c)
+06ec:03bc      __commode
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(textmode.c)
+06ec:03be      __fmode
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(tolower.c)
+0000:47c6      tolower_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(open.c)
+0000:49c4*     open_
+0000:49eb      _sopen_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(fseek.c)
+0000:4a75      fseek_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(chktty.c)
+0000:4bd3      __chktty_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(freefp.c)
+0000:4bfe      __freefp_
+0000:4c73      __purgefp_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(allocfp.c)
+0000:4caf      __allocfp_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(__lseek.c)
+0000:4dc9      __lseek_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(_clse.c)
+0000:4e07      __close_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(growseg.c)
+0000:4e30      __GrowSeg_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(allocseg.c)
+0000:4eff      __AllocSeg_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(fmemneed.c)
+0000:4f9e      __fmemneed_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(heapgrow.c)
+0000:4fa1*     _heapgrow_
+0000:4fa1*     _fheapgrow_
+0000:4fa2      _nheapgrow_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(cmain086.c)
+0000:5019      __CMain
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(uselfn.c)
+06ec:03c0      ___uselfn
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(dosseg)
+0000:5036      __DOSseg__
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(initargv.c)
+0000:5233      __Init_Argv_
+0000:528f      __Fini_Argv_
+モジュール: C:\WATCOM\lib286\plibl.lib(cppdata.cpp)
+06ec:2166      __wint_thread_data
+06ec:218a*     __compiled_under_generic
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(enterdb.c)
+0000:52b3      __EnterWVIDEO_
+06ec:03c2+     __WD_Present
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(nmemneed.c)
+0000:52d7      __nmemneed_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(grownear.c)
+0000:5359      __LastFree_
+0000:53d1      __ExpandDGROUP_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(sgdef086)
+06ec:0418      __Start_XI
+06ec:043c      __End_XI
+06ec:043c      __Start_YI
+06ec:044e      __End_YI
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(wctomb.c)
+0000:54d6      wctomb_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(itoa.c)
+0000:54ff+     utoa_
+0000:555c      itoa_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(noefgfmt.c)
+06ec:03c4      ___EFG_printf
+06ec:03c8*     ___EFG_scanf
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(lltoa.c)
+0000:558e      ulltoa_
+0000:5672*     lltoa_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(strupr.c)
+0000:56d4      _strupr_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(ltoa.c)
+0000:56f6      ultoa_
+0000:5765*     ltoa_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(mbislead.c)
+0000:5794      _ismbblead_
+06ec:218c      ___MBCSIsTable
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(iomode.c)
+0000:57b1      __GetIOMode_
+0000:57d6      __SetIOMode_
+06ec:03cc      ___NFiles
+06ec:03ce      ___init_mode
+06ec:03f6      ___io_mode
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(dosret.c)
+0000:57f9      __set_errno_dos_
+0000:5853*     __set_errno_dos_reterr_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(fsync.c)
+0000:585d      fsync_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(opendos.c)
+0000:5862      _dos_open_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(isatt.c)
+0000:5886      isatty_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(doserrno.c)
+0000:58ac*     __get_doserrno_ptr_
+06ec:228e      __doserrno
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(umaskval.c)
+06ec:040e      ___umaskval
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(creatdos.c)
+0000:58b3      _dos_creat_
+0000:58d5*     _dos_creatnew_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(stiomode.c)
+0000:58f4+     __grow_iomode_
+0000:59e0      __SetIOMode_grow_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(lseek.c)
+0000:5a38      lseek_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(tell.c)
+0000:5a63      _tell_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(memset.c)
+0000:5a72      memset_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(heapen.c)
+0000:5a89*     _heapenable_
+06ec:0410      ___heap_enabled
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(amblksiz.c)
+06ec:0412      __amblksiz
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(___argc.c)
+06ec:2292      ____Argv
+06ec:2296      ____Argc
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(histsplt.c)
+06ec:2298      ___historical_splitparms
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(sbrk.c)
+0000:5a9a      __brk_
+0000:5aff*     sbrk_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(alphabet.c)
+06ec:01c4      ___Alphabet
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(mbinit.c)
+0000:5b77      __mbinit_
+06ec:0414+     ___MBCodePage
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(filedos.c)
+0000:5bf4*     _dos_close_
+0000:5c00      _dos_commit_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(doserror)
+0000:5c0e      __doserror_
+0000:5c1a*     __doserror1_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(frealloc.c)
+0000:5c24*     _frealloc_
+0000:5c24      realloc_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(iomodtty.c)
+0000:5ce8      __ChkTTYIOMode_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(mbisdbcs.c)
+06ec:0416      ___IsDBCS
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(getltdos.c)
+0000:5d26      dos_get_dbcs_lead_table_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(getcpdos.c)
+0000:5d4f      dos_get_code_page_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(fmsize.c)
+0000:5d5f*     _msize_
+0000:5d5f      _fmsize_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(nexpand.c)
+0000:5d70      _nexpand_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(fmemcpy.c)
+0000:5dc0      _fmemcpy_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(fexpand.c)
+0000:5de5      _fexpand_
+0000:5de5*     _expand_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(_expand.c)
+0000:5e1a      __HeapManager_expand_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(bexpand.c)
+0000:5f9a      _bexpand_
+モジュール: C:\WATCOM\lib286\dos\clibl.lib(bfree.c)
+0000:5ff3      _bfree_
+
+
+                        +---------------------------+
+                        |        未解決な参照       |
+                        +---------------------------+
+
+未定義シンボル                  参照モジュール
+==============                  ===============
+
+void __far TcpSocket::close()   build\doscurl.obj(build\doscurl.obj)
+char signed __far TcpSocketMgr::freeSocket( TcpSocket __far * ) build\doscurl.obj(build\doscurl.obj)
+void __far Utils::endStack2( bool ) build\doscurl.obj(build\doscurl.obj)
+char signed __far Dns::resolve( char const __far *, char unsigned __far *, char unsigned ) build\doscurl.obj(build\doscurl.obj)
+long unsigned volatile __far Timer_CurrentTicks build\doscurl.obj(build\doscurl.obj)
+char unsigned __far Dns::queryPending build\doscurl.obj(build\doscurl.obj)
+char unsigned __far Buffer_first build\doscurl.obj(build\doscurl.obj)
+char unsigned __far Buffer_next build\doscurl.obj(build\doscurl.obj)
+void __far Packet_process_internal() build\doscurl.obj(build\doscurl.obj)
+char unsigned __far mTCP_sleepCallEnabled build\doscurl.obj(build\doscurl.obj)
+char unsigned __far mTCP_releaseTimesliceEnabled build\doscurl.obj(build\doscurl.obj)
+char unsigned __far Ip::fragsInReassembly build\doscurl.obj(build\doscurl.obj)
+void __far Ip::purgeOverdue()   build\doscurl.obj(build\doscurl.obj)
+short unsigned __far Arp::pendingEntries build\doscurl.obj(build\doscurl.obj)
+void __far Arp::driveArp2()     build\doscurl.obj(build\doscurl.obj)
+short unsigned __far Tcp::Pending_Sent build\doscurl.obj(build\doscurl.obj)
+short unsigned __far Tcp::Pending_Outgoing build\doscurl.obj(build\doscurl.obj)
+void __far Tcp::drivePackets2() build\doscurl.obj(build\doscurl.obj)
+void __far Dns::drivePendingQuery1() build\doscurl.obj(build\doscurl.obj)
+TcpSocket __far * __far TcpSocketMgr::getSocket() build\doscurl.obj(build\doscurl.obj)
+char signed __far TcpSocket::setRecvBuffer( short unsigned ) build\doscurl.obj(build\doscurl.obj)
+char signed __far TcpSocket::connectNonBlocking( short unsigned, char unsigned __far *, short unsigned ) build\doscurl.obj(build\doscurl.obj)
+short __far TcpSocket::send( char unsigned __far *, short unsigned ) build\doscurl.obj(build\doscurl.obj)
+short __far TcpSocket::recv( char unsigned __far *, short unsigned ) build\doscurl.obj(build\doscurl.obj)
+char signed __far Utils::parseEnv() build\doscurl.obj(build\doscurl.obj)
+char signed __far Utils::initStack( char unsigned, char unsigned, void (__far *)(), void (__far *)()) build\doscurl.obj(build\doscurl.obj)
+
+
+                        +--------------------+
+                        |   使用ライブラリ   |
+                        +--------------------+
+
+C:\WATCOM\lib286\plibl.lib
+C:\WATCOM\lib286\dos\clibl.lib
+
+
+
+                        +-----------------------+
+                        |     リンカー統計      |
+                        +-----------------------+
+
+スタック サイズ:  0800 (2048.)
+メモリ サイズ:  9960 (39264.)
+エントリアドレス: 0000:2d46
+リンク時間: 00:00.00

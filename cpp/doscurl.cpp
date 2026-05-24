@@ -193,7 +193,7 @@ int parseUrl(const char *url) {
 // Resolve hostname
 int resolveHost(void) {
   if (VerboseMode >= 2) {
-    fprintf(stderr, "Resolving %s... ", Hostname);
+    fprintf(stderr, "* Resolving %s... ", Hostname);
   }
   
   // Initialize HostAddr to zeros
@@ -204,7 +204,7 @@ int resolveHost(void) {
   
   if (rc < 0) {
     if (VerboseMode >= 2) {
-      fprintf(stderr, "failed\n");
+      fprintf(stderr, "* DNS resolution failed\n");
     }
     return -1;
   }
@@ -212,7 +212,7 @@ int resolveHost(void) {
   // If rc == 0, it's an IP address and already resolved
   if (rc == 0) {
     if (VerboseMode >= 2) {
-      fprintf(stderr, "%d.%d.%d.%d\n",
+      fprintf(stderr, "* Resolved to %d.%d.%d.%d\n",
               HostAddr[0], HostAddr[1], HostAddr[2], HostAddr[3]);
     }
     return 0;
@@ -226,7 +226,7 @@ int resolveHost(void) {
     // Check for DNS timeout
     if (Timer_diff(start, TIMER_GET_CURRENT()) > TIMER_MS_TO_TICKS(ConnectTimeout)) {
       if (VerboseMode >= 2) {
-        fprintf(stderr, "timeout\n");
+        fprintf(stderr, "* DNS resolution timeout\n");
       }
       return -1;
     }
@@ -246,7 +246,7 @@ int resolveHost(void) {
   
   if (rc != 0) {
     if (VerboseMode >= 2) {
-      fprintf(stderr, "failed\n");
+      fprintf(stderr, "* DNS resolution failed\n");
     }
     return -1;
   }
@@ -254,13 +254,13 @@ int resolveHost(void) {
   // Check if HostAddr was successfully set
   if (HostAddr[0] == 0 && HostAddr[1] == 0 && HostAddr[2] == 0 && HostAddr[3] == 0) {
     if (VerboseMode >= 2) {
-      fprintf(stderr, "failed\n");
+      fprintf(stderr, "* DNS resolution failed\n");
     }
     return -1;
   }
   
   if (VerboseMode >= 2) {
-    fprintf(stderr, "%d.%d.%d.%d\n",
+    fprintf(stderr, "* Resolved to %d.%d.%d.%d\n",
             HostAddr[0], HostAddr[1], HostAddr[2], HostAddr[3]);
   }
   
@@ -270,7 +270,7 @@ int resolveHost(void) {
 // Connect to server
 int connectToServer(void) {
   if (VerboseMode >= 2) {
-    fprintf(stderr, "Connecting to %s:%u... ", Hostname, ServerPort);
+    fprintf(stderr, "* Connecting to %s:%u... ", Hostname, ServerPort);
   }
   
   uint16_t localport = 2048 + rand();
@@ -317,7 +317,7 @@ int connectToServer(void) {
   }
   
   if (VerboseMode >= 2) {
-    fprintf(stderr, "connected\n");
+    fprintf(stderr, "* Connected\n");
   }
   return 0;
 }
@@ -384,15 +384,33 @@ int sendRequest(void) {
   }
   
   if (VerboseMode >= 2) {
-    fprintf(stderr, "Sending %s request...\n", HttpMethod);
+    fprintf(stderr, "* Sending %s request...\n", HttpMethod);
   }
   
   int len = strlen(httpRequest);
   int sent = 0;
   
-  // Debug: show request being sent in extra verbose mode
-  if (VerboseMode >= 2) {
-    fprintf(stderr, "--- Request ---\n%s--- End Request ---\n", httpRequest);
+  // Show request in verbose mode with "> " prefix
+  if (VerboseMode >= 1) {
+    char *line = httpRequest;
+    char *end = httpRequest + len;
+    
+    while (line < end) {
+      char *lineEnd = line;
+      while (lineEnd < end && *lineEnd != '\r' && *lineEnd != '\n') {
+        lineEnd++;
+      }
+      
+      // Print line with "> " prefix
+      fprintf(stderr, "> ");
+      fwrite(line, 1, lineEnd - line, stderr);
+      fprintf(stderr, "\n");
+      
+      // Skip CR/LF
+      line = lineEnd;
+      if (line < end && *line == '\r') line++;
+      if (line < end && *line == '\n') line++;
+    }
   }
   
   while (sent < len) {
@@ -485,7 +503,7 @@ int receiveResponse(void) {
   FILE *outFile = NULL;
   
   if (VerboseMode >= 2) {
-    fprintf(stderr, "Receiving response...\n");
+    fprintf(stderr, "* Receiving response...\n");
   }
   
   clockTicks_t start = TIMER_GET_CURRENT();
@@ -505,7 +523,7 @@ int receiveResponse(void) {
     // If no data for 2 seconds and we have some response, consider it complete
     if (responseLen > 0 && Timer_diff(lastData, TIMER_GET_CURRENT()) > TIMER_MS_TO_TICKS(2000)) {
       if (VerboseMode >= 2) {
-        fprintf(stderr, "No more data after 2 seconds, considering response complete\n");
+        fprintf(stderr, "* No more data after 2 seconds, considering response complete\n");
       }
       break;
     }
@@ -537,7 +555,7 @@ int receiveResponse(void) {
       // If we've checked many times with no data and connection seems idle, break
       if (responseLen > 0 && noDataCount > 100) {
         if (VerboseMode >= 2) {
-          fprintf(stderr, "Connection idle, considering response complete\n");
+          fprintf(stderr, "* Connection idle, considering response complete\n");
         }
         break;
       }
@@ -581,12 +599,28 @@ int receiveResponse(void) {
     // Parse status code
     LastHttpStatus = parseHttpStatus(statusLine);
     
-    // Print headers to stderr if verbose mode is enabled
+    // Print headers to stderr if verbose mode is enabled with "< " prefix
     if (VerboseMode >= 1) {
-      for (uint32_t i = 0; i < headerLen; i++) {
-        fputc(responseData[i], stderr);
+      uint8_t *line = responseData;
+      uint8_t *end = responseData + headerLen;
+      
+      while (line < end) {
+        uint8_t *lineEnd = line;
+        while (lineEnd < end && *lineEnd != '\r' && *lineEnd != '\n') {
+          lineEnd++;
+        }
+        
+        // Print line with "< " prefix
+        fprintf(stderr, "< ");
+        fwrite(line, 1, lineEnd - line, stderr);
+        fprintf(stderr, "\n");
+        
+        // Skip CR/LF
+        line = lineEnd;
+        if (line < end && *line == '\r') line++;
+        if (line < end && *line == '\n') line++;
       }
-      fprintf(stderr, "\n\n");  // Extra blank line to separate headers from body
+      fprintf(stderr, "\n");  // Extra blank line to separate headers from body
     }
     
     // Check for error status codes
@@ -604,7 +638,7 @@ int receiveResponse(void) {
       fwrite(headerEnd, 1, bodyLen, outFile);
       fclose(outFile);
       if (VerboseMode >= 2) {
-        fprintf(stderr, "Saved %lu bytes to '%s'\n", bodyLen, OutputFile);
+        fprintf(stderr, "* Saved %lu bytes to '%s'\n", bodyLen, OutputFile);
       }
     } else {
       fwrite(headerEnd, 1, bodyLen, stdout);
@@ -615,7 +649,7 @@ int receiveResponse(void) {
       fwrite(responseData, 1, responseLen, outFile);
       fclose(outFile);
       if (VerboseMode >= 2) {
-        fprintf(stderr, "Saved %lu bytes to '%s'\n", responseLen, OutputFile);
+        fprintf(stderr, "* Saved %lu bytes to '%s'\n", responseLen, OutputFile);
       }
     } else {
       fwrite(responseData, 1, responseLen, stdout);
@@ -623,7 +657,8 @@ int receiveResponse(void) {
   }
   
   if (VerboseMode >= 2) {
-    fprintf(stderr, "\nReceived %lu bytes total\n", totalBytes);
+    fprintf(stderr, "* \n");
+    fprintf(stderr, "* Received %lu bytes total\n", totalBytes);
   }
   
   return 0;
@@ -859,17 +894,17 @@ int main(int argc, char *argv[]) {
   }
   
   if (VerboseMode >= 2) {
-    fprintf(stderr, "Method: %s\n", HttpMethod);
-    fprintf(stderr, "Host: %s\n", Hostname);
-    fprintf(stderr, "Port: %u\n", ServerPort);
-    fprintf(stderr, "Path: %s\n", Path);
+    fprintf(stderr, "* Method: %s\n", HttpMethod);
+    fprintf(stderr, "* Host: %s\n", Hostname);
+    fprintf(stderr, "* Port: %u\n", ServerPort);
+    fprintf(stderr, "* Path: %s\n", Path);
     if (PostData[0] != '\0') {
-      fprintf(stderr, "POST Data: %s\n", PostData);
+      fprintf(stderr, "* POST Data: %s\n", PostData);
     }
     if (CustomHeaderCount > 0) {
-      fprintf(stderr, "Custom Headers: %d\n", CustomHeaderCount);
+      fprintf(stderr, "* Custom Headers: %d\n", CustomHeaderCount);
     }
-    fprintf(stderr, "\n");
+    fprintf(stderr, "* \n");
   }
   
   // Initialize TCP/IP stack
@@ -904,8 +939,8 @@ int main(int argc, char *argv[]) {
       shutdown(1);
     }
     
-    if (VerboseMode && redirectCount > 0) {
-      fprintf(stderr, "Following redirect #%d to: %s\n", redirectCount, currentUrl);
+    if (VerboseMode >= 2 && redirectCount > 0) {
+      fprintf(stderr, "* Following redirect #%d to: %s\n", redirectCount, currentUrl);
     }
     
     // Resolve hostname
@@ -951,7 +986,7 @@ int main(int argc, char *argv[]) {
       
       if (headerEnd && extractLocation(responseData, responseLen, locationUrl, sizeof(locationUrl))) {
         if (VerboseMode >= 2) {
-          fprintf(stderr, "Redirect (HTTP %d) to: %s\n", LastHttpStatus, locationUrl);
+          fprintf(stderr, "* Redirect (HTTP %d) to: %s\n", LastHttpStatus, locationUrl);
         }
         
         // Check redirect count

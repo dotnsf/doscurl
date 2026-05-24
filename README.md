@@ -36,38 +36,41 @@ A lightweight HTTP client for 16-bit PC-DOS environments, inspired by curl.
 
 ## Building
 
-### On Windows Host
+### Prerequisites
 
-1. Ensure Open Watcom is installed and `WATCOM` environment variable is set:
+1. **Open Watcom V2** installed at `C:\WATCOM`
+2. **mTCP source code** installed at `C:\mTCP\src`
+3. **WATCOM environment variable** set to `C:\WATCOM`
+
+### Build Steps
+
+1. Navigate to the `cpp` directory:
    ```batch
-   set WATCOM=C:\WATCOM
+   cd doscurl\cpp
    ```
 
-2. Run the build script:
+2. Run the build using wmake:
    ```batch
-   build.bat
+   wmake all
    ```
 
-3. The executable will be created at `build\doscurl.exe`
+3. The executable will be created as `doscurl.exe` in the `cpp` directory
 
-### Using Makefile directly
+### Alternative: Using build.bat
 
 ```batch
-set WATCOM=C:\WATCOM
-set PATH=%WATCOM%\binw;%PATH%
-wmake
+cd doscurl\cpp
+build.bat
 ```
 
 ### Cleaning build artifacts
 
 ```batch
-clean.bat
-```
-
-Or:
-```batch
+cd doscurl\cpp
 wmake clean
 ```
+
+This will remove all `.obj`, `.exe`, `.map`, and `.err` files from the build directory.
 
 ## Usage
 
@@ -230,35 +233,32 @@ doscurl http://example.com/
 
 ```
 doscurl/
-├── src/              # Source code
-│   ├── main.c        # Main entry point
-│   ├── utils.c       # Utility functions
-│   ├── url.c         # URL parser
-│   ├── socket.c      # Socket operations
-│   └── http.c        # HTTP protocol handler
-├── include/          # Header files
-│   ├── doscurl.h     # Common definitions
-│   ├── utils.h       # Utility functions
-│   ├── url.h         # URL parser
-│   ├── socket.h      # Socket operations
-│   └── http.h        # HTTP protocol
-├── build/            # Build output
-├── test/             # Test scripts
+├── cpp/              # C++ implementation (current version)
+│   ├── doscurl.cpp   # Main source file
+│   ├── doscurl.cfg   # mTCP configuration
+│   ├── Makefile      # Open Watcom makefile
+│   ├── build.bat     # Build script
+│   ├── README.md     # Detailed documentation
+│   └── TESTING.md    # Testing guide
+├── src/              # Legacy C implementation (deprecated)
+├── include/          # Legacy headers (deprecated)
 ├── docs/             # Documentation
-├── Makefile          # Open Watcom makefile
-├── build.bat         # Build script
-├── clean.bat         # Clean script
+├── test/             # Test scripts
 └── README.md         # This file
 ```
+
+**Note**: The current implementation is in the `cpp/` directory. The `src/` and `include/` directories contain an older C implementation that is no longer maintained.
 
 ## Limitations
 
 - HTTP only (no HTTPS support)
 - **Requires Large memory model (-ml)** - Medium (-mm) and Small (-ms) models are not supported
 - No keep-alive connections
-- Basic HTTP/1.0 support
+- Basic HTTP/1.0 and HTTP/1.1 support
 - No cookie management
 - No chunked transfer encoding
+- Maximum response size: 64KB
+- Maximum request size: 4KB
 
 ### Memory Model Requirements
 
@@ -273,12 +273,11 @@ DOSCurl **must** be compiled with the **Large memory model (-ml)**. Other memory
 
 **Technical Details:**
 - mTCP's packet buffer structures exceed the 64KB data segment limit of Medium/Small models
-- Even with minimal `PACKET_BUFFERS` settings (5 buffers), initialization fails
 - The mTCP library is designed for Large memory model usage
 - Attempting to use other models results in "Init: Could not setup packet buffers" error
 
 **Build Configuration:**
-The Makefile is pre-configured with Large memory model:
+The Makefile (`cpp/Makefile`) is pre-configured with Large memory model:
 ```makefile
 memory_model = -ml
 ```
@@ -286,27 +285,7 @@ memory_model = -ml
 
 ## Known Issues
 
-### "End: heap is corrupted!" Message
-
-When the program exits, you may see the following message:
-```
-End: heap is corrupted!
-```
-
-**This message can be safely ignored.** It is a false positive from mTCP's internal heap checking mechanism.
-
-**Why this happens:**
-- DOSCurl uses `malloc()`/`free()` for large buffers to avoid memory constraints
-- mTCP's `_heapchk()` function incorrectly reports this as heap corruption
-- The program functions correctly despite this message
-
-**Impact:**
-- ✅ No functional impact - the program works correctly
-- ✅ Multiple executions work fine
-- ✅ All HTTP operations complete successfully
-- ⚠️ The message appears every time the program exits
-
-This is a known limitation of mixing mTCP's memory management with standard C library memory allocation in 16-bit DOS environments.
+None currently. The program has been tested and works correctly in DOSBox-X with mTCP.
 
 ## Development Status
 

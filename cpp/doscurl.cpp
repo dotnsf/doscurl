@@ -139,13 +139,7 @@ static void shutdown(int rc) {
   if (httpRequest) free(httpRequest);
   if (base64Buffer) free(base64Buffer);
   
-  // Call Utils::endStack() to properly clean up mTCP stack.
-  // This is necessary to allow subsequent executions to work.
-  //
-  // Note: Utils::endStack() will print "End: heap is corrupted!" message
-  // because it calls _heapchk() which fails when we use malloc/free.
-  // This is a false positive - the program works correctly.
-  // The message can be safely ignored.
+  // Clean up mTCP stack
   Utils::endStack();
   
   exit(rc);

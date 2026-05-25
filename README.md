@@ -332,5 +332,5 @@ This project is provided as-is without warranty. The MIT License permits use for
 
 ## Special Thanks
 
-- [mTCP](https://github.com/domspad/mTCP)
-- [DOSBox-X](https://github.com/DOSBox-X/DOSBox-X)
+- [mTCP](http://brutmanlabs.org/mTCP/)
+- [DOSBox-X](https://dosbox-x.com/)

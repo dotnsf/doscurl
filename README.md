@@ -27,7 +27,8 @@ A lightweight HTTP client for 16-bit PC-DOS environments, inspired by curl.
 ### Build Environment (Windows Host)
 - Windows 11 (or compatible)
 - Open Watcom V2 installed at `C:\WATCOM`
-- WATTCP library installed and configured
+- (mTCP)[http://brutmanlabs.org/mTCP/] source code installed at `C:\mTCP\src`
+
 
 ### Runtime Environment (DOS)
 - 16-bit PC-DOS or compatible
@@ -317,8 +318,19 @@ Current status: **Phase 7 Complete** - HTTP proxy support implemented
 
 ## License
 
-This project is provided as-is for educational and personal use.
+This code is licensed under the MIT License.
+
+This project is provided as-is without warranty. The MIT License permits use for any purpose, including commercial use.
+
+## Copyright
+
+2026 [K.Kimura @ Juge.Me](https://github.com/dotnsf) all rights reserved.
 
 ## Author
 
-Developed for 16-bit DOS environments using Open Watcom C/C++ and WATTCP.
+[K.Kimura](https://github.com/dotnsf), developed for 16-bit DOS environments using Open Watcom C/C++ and mTCP.
+
+## Special Thanks
+
+- [mTCP](https://github.com/domspad/mTCP)
+- [DOSBox-X](https://github.com/DOSBox-X/DOSBox-X)

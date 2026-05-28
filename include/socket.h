@@ -22,5 +22,3 @@ void socket_close(socket_t sock);
 int socket_resolve(const char *hostname, char *ip_address);
 
 #endif /* SOCKET_H */
-
-// Made with Bob

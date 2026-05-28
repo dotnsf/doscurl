@@ -176,5 +176,3 @@ int main(int argc, char *argv[]) {
     
     return (result == 0) ? 0 : 1;
 }
-
-// Made with Bob

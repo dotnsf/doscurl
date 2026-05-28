@@ -39,5 +39,3 @@ echo.
 echo Build successful!
 echo Executable: build\doscurl.exe
 echo.
-
-@REM Made with Bob

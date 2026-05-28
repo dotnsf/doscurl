@@ -30,5 +30,3 @@ int http_parse_response(const char *raw_response, http_response_t *response);
 void http_print_response(const http_response_t *response, const options_t *options);
 
 #endif /* HTTP_H */
-
-// Made with Bob

@@ -125,5 +125,3 @@ char *str_duplicate(const char *str) {
     memcpy(dup, str, len);
     return dup;
 }
-
-// Made with Bob

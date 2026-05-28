@@ -382,5 +382,3 @@ int http_get(const url_t *url, const options_t *options, http_response_t *respon
 int http_post(const url_t *url, const options_t *options, http_response_t *response) {
     return http_request(url, options, response);
 }
-
-// Made with Bob

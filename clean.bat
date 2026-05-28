@@ -27,5 +27,3 @@ if exist build\*.sym del /q build\*.sym
 echo.
 echo Clean complete!
 echo.
-
-@REM Made with Bob

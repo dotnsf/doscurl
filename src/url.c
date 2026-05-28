@@ -146,5 +146,3 @@ int parse_url(const char *url_string, url_t *url) {
     
     return SUCCESS;
 }
-
-// Made with Bob

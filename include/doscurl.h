@@ -55,5 +55,3 @@ char *str_trim(char *str);
 int str_starts_with(const char *str, const char *prefix);
 
 #endif /* DOSCURL_H */
-
-// Made with Bob

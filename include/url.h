@@ -22,5 +22,3 @@ void url_init(url_t *url);
 void url_free(url_t *url);
 
 #endif /* URL_H */
-
-// Made with Bob

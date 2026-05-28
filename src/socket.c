@@ -262,5 +262,3 @@ void socket_close(socket_t sock) {
     
     print_verbose("Connection closed");
 }
-
-// Made with Bob

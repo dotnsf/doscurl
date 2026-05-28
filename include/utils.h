@@ -18,5 +18,3 @@ int str_case_compare(const char *s1, const char *s2);
 char *str_duplicate(const char *str);
 
 #endif /* UTILS_H */
-
-// Made with Bob
